@@ -1,0 +1,62 @@
+#!/bin/bash
+# postroot.sh – Docker-basierte Installation mit den Pfaden aus dem offiziellen Repo
+
+echo "### Lox-Audioserver postroot.sh (Docker) startet ..."
+
+PLUGINNAME=lox-audioserver
+LBHOMEDIR=/opt/loxberry
+APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
+WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
+
+# Docker prüfen
+if ! command -v docker >/dev/null 2>&1; then
+    echo "FEHLER: Docker ist nicht installiert! Bitte Docker nachinstallieren."
+    exit 1
+fi
+
+# In Plugin-Verzeichnis wechseln
+cd "$APPDIR" || exit 1
+
+# Verzeichnisse wie im Repo vorgeschlagen anlegen
+echo "Erstelle ./data und ./logs ..."
+mkdir -p ./data ./logs
+chown -R loxberry:loxberry ./data ./logs
+
+# Verzeichnis für Coverbilder im Webfrontend anlegen
+echo "Erstelle Cover-Verzeichnis im Webfrontend ..."
+mkdir -p "$WEBDIR/covers"
+chown -R loxberry:loxberry "$WEBDIR/covers"
+
+# Alten Container entfernen, falls vorhanden
+if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGINNAME$"; then
+    echo "Entferne alten Container $PLUGINNAME ..."
+    docker rm -f $PLUGINNAME
+fi
+
+# Immer die neueste main-Version ziehen
+echo "Ziehe aktuelles Docker-Image (latest = main) ..."
+docker pull ghcr.io/rudyberends/lox-audioserver:latest
+
+# Container starten mit den Pfaden aus dem Repo
+echo "Starte neuen Container $PLUGINNAME ..."
+docker run -d \
+  --name $PLUGINNAME \
+  --restart=always \
+  -p 7090:7090 \
+  -p 7091:7091 \
+  -p 7095:7095 \
+  -v "$APPDIR/data:/app/data" \
+  -v "$APPDIR/logs:/app/logs" \
+  ghcr.io/rudyberends/lox-audioserver:latest
+
+# CGI-Skripte Rechte setzen (Proxy & Index)
+echo "Setze Rechte für CGI-Skripte ..."
+for script in index.cgi proxy.cgi; do
+    if [ -f $LBHOMEDIR/webfrontend/htmlauth/$PLUGINNAME/$script ]; then
+        chmod 755 $LBHOMEDIR/webfrontend/htmlauth/$PLUGINNAME/$script
+        chown loxberry:loxberry $LBHOMEDIR/webfrontend/htmlauth/$PLUGINNAME/$script
+    fi
+done
+
+echo "### Lox-Audioserver postroot.sh abgeschlossen (Docker, Repo-Pfade)."
+exit 0

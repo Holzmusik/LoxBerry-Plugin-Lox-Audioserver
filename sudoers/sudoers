@@ -1,0 +1,6 @@
+loxberry ALL=(ALL) NOPASSWD: /usr/bin/docker
+loxberry ALL=(ALL) NOPASSWD: /bin/systemctl start lox-audioserver.service
+loxberry ALL=(ALL) NOPASSWD: /bin/systemctl stop lox-audioserver.service
+loxberry ALL=(ALL) NOPASSWD: /bin/systemctl restart lox-audioserver.service
+loxberry ALL=(ALL) NOPASSWD: /bin/systemctl is-active lox-audioserver.service
+loxberry ALL=(ALL) NOPASSWD: /bin/journalctl -u lox-audioserver.service -n 50 --no-pager

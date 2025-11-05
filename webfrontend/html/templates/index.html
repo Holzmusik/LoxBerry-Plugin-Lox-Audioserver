@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Lox-Audioserver</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; background:#f9f9f9; }
+
+    .tabs ul {
+      list-style:none;
+      display:flex;
+      background:#e6e6e6;
+      padding:0;
+      margin:0;
+      border:1px solid #ccc;
+      border-bottom:none;
+    }
+    .tabs li { flex: initial; }
+    .tabs a {
+      display:block;
+      padding:10px 18px;
+      color:#000;
+      text-align:center;
+      text-decoration:none;
+      font-weight:bold;
+      border-right:1px solid #ccc;
+    }
+    .tabs li:last-child a { border-right:none; }
+    .tabs li:hover a { background:#ddd; }
+    .tabs .active a {
+      background:#ccc;
+      color:#000;
+    }
+
+    .tab-content .tab {
+      display:none;
+      padding:20px;
+      background:#fafafa;
+      border:1px solid #ccc;
+      border-top:none;
+    }
+    .tab-content .active { display:block; }
+
+    .servicestatus {
+      display: grid;
+      grid-template-columns: auto auto auto auto;
+      gap: 0px 10px;
+      justify-content: center;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .status {
+      padding: 7px;
+      border-radius: 5px;
+      background: #dfdfdf;
+      border: 1px solid #7E7E7E;
+      width: 170px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .buttonrow {
+      display:flex;
+      gap:5px;
+    }
+    .buttonrow button {
+      margin:0;
+      padding:5px 12px;
+      background:#e6e6e6;
+      border:1px solid #ccc;
+      color:#000;
+      font-weight:bold;
+      cursor:pointer;
+      border-radius:3px;
+    }
+    .buttonrow button:hover { background:#ddd; }
+
+    .box {
+      border: 1px solid black;
+      border-radius: 5px;
+      padding: 5px;
+      background:#fff;
+      margin-bottom:15px;
+    }
+    .boxtitle {
+      background-color: #6dac20;
+      color: white;
+      text-shadow: 1px 1px 2px black;
+      border-radius: 5px 5px 0 0;
+      padding: 5px;
+      font-weight:bold;
+    }
+
+    .playergrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .playerbox {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+      background:#fff;
+      text-align:center;
+    }
+    .playerbox img {
+      max-width: 100%;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      transition: opacity 0.4s ease;
+      opacity: 1;
+    }
+    .playerbox img:not(.loaded) {
+      opacity: 0.3;
+    }
+    .playerbox h3 {
+      margin: 5px 0;
+      font-size: 16px;
+    }
+    .playerbox p {
+      margin: 2px 0;
+      font-size: 14px;
+    }
+
+    pre {
+      background:#f4f4f4;
+      padding:10px;
+      border:1px solid #ccc;
+      max-height:300px;
+      overflow:auto;
+      font-size:12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="tabs">
+  <ul>
+    <li class="active"><a href="#io">Server Control</a></li>
+    <li><a href="#players">Player</a></li>
+    <li><a href="#sensors">Admin Webside</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</div>
+
+<div class="tab-content">
+
+  <div id="io" class="tab active">
+    <div class="servicestatus">
+      <div>Service Status:</div>
+      <div id="servicestatusicon">
+        <img src="./images/unknown_20.png" alt="Status Icon">
+      </div>
+      <div class="status"><TMPL_VAR NAME="STATUS"></div>
+      <div class="buttonrow">
+        <form method="get" style="margin:0; display:flex; gap:5px;">
+          <button name="action" value="start">Start</button>
+          <button name="action" value="stop">Stop</button>
+          <button name="action" value="restart">Restart</button>
+        </form>
+      </div>
+    </div>
+
+    <h2 class="boxtitle">Logs</h2>
+    <div class="box">
+      <pre><TMPL_VAR NAME="LOGS"></pre>
+    </div>
+  </div>
+
+  <div id="players" class="tab">
+    <h2 class="boxtitle">Player</h2>
+    <div class="playergrid">
+      <TMPL_LOOP NAME="PLAYERS">
+        <div class="playerbox">
+          <h3><TMPL_VAR NAME="ZONE_NAME"></h3>
+          <img src="<TMPL_VAR NAME='LOCAL_COVER'>" alt="Cover">
+          <p><b><TMPL_VAR NAME="ZONE_TITLE"></b></p>
+          <p><TMPL_VAR NAME="ZONE_ARTIST"></p>
+          <a href="<TMPL_VAR NAME='PLAYER_URL'>" target="_blank" rel="noopener noreferrer">Live-Ansicht</a>
+        </div>
+      </TMPL_LOOP>
+    </div>
+  </div>
+
+  <div id="sensors" class="tab">
+    <h2 class="boxtitle">Lox-Audioserver Admin</h2>
+    <div class="box">
+      <iframe src="http://<TMPL_VAR NAME='SERVERHOST'>:<TMPL_VAR NAME='SERVERPORT'>/"
+              width="100%" height="800" style="border:none;"></iframe>
+    </div>
+  </div>
+
+  <div id="about" class="tab">
+    <h2 class="boxtitle">Über dieses Plugin</h2>
+    <div class="box">
+      <p><b>Name:</b> Lox-Audioserver</p>
+      <p><b>Version:</b> <TMPL_VAR NAME="PLUGINVERSION"></p>
+      <p><b>Autor:</b> S. Ludwig</p>
+      <p><b>Repository:</b> <a href="https://github.com/dein-repo" target="_blank">GitHub</a></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tabs a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelectorAll('.tabs li').forEach(li => li.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      link.parentElement.classList.add('active');
+      document.querySelector(link.getAttribute('href')).classList.add('active');
+    });
+  });
+
+  // Titelüberwachung pro Zone
+  const lastTitles = {};
+
+  function refreshPlayers() {
+    fetch(window.location.href)
+      .then(resp => resp.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        const newBoxes = doc.querySelectorAll("#players .playerbox");
+        const oldBoxes = document.querySelectorAll("#players .playerbox");
+
+        newBoxes.forEach((newBox, i) => {
+          const oldBox = oldBoxes[i];
+          if (!oldBox) return;
+
+          const zoneName = newBox.querySelector("h3")?.textContent?.trim();
+          const newTitle = newBox.querySelector("p b")?.textContent?.trim();
+          const newArtist = newBox.querySelectorAll("p")[1]?.textContent?.trim();
+          const newCover = newBox.querySelector("img")?.getAttribute("src");
+
+          const oldTitle = lastTitles[zoneName];
+
+          // Cover aktualisieren bei Titelwechsel
+          if (newTitle && newTitle !== oldTitle) {
+            const timestamp = new Date().getTime();
+            const img = oldBox.querySelector("img");
+            img.classList.remove("loaded");
+            img.onload = () => img.classList.add("loaded");
+            img.src = newCover + "?t=" + timestamp;
+            lastTitles[zoneName] = newTitle;
+          }
+
+          // Text und Link aktualisieren
+          oldBox.querySelector("h3").textContent = zoneName;
+          oldBox.querySelector("p b").textContent = newTitle;
+          oldBox.querySelectorAll("p")[1].textContent = newArtist;
+          oldBox.querySelector("a").href = newBox.querySelector("a").href;
+        });
+      })
+      .catch(err => console.error("Fehler beim Refresh:", err));
+  }
+
+  // Alle 15 Sekunden aktualisieren
+  setInterval(refreshPlayers, 15000);
+</script>
+</body>
+</html>

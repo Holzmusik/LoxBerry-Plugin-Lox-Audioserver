@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Player Ansicht</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5vw 4vw;
+      box-sizing: border-box;
+      border-radius: 12px;
+      overflow: hidden;
+      --bg-cover: #111;
+    }
+
+    .container::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-cover) center/cover no-repeat;
+      filter: blur(40px);
+      z-index: 0;
+      opacity: 1;
+      transition: background-image 0s, opacity 0.8s ease;
+    }
+
+    .container::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 0;
+    }
+
+    .container > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover {
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      border-radius: 8px;
+      margin-bottom: 5vh;
+      object-fit: contain;
+      background-color: #444;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .cover.fade-out { opacity: 0; transform: scale(0.98); }
+    .cover.fade-in  { opacity: 1; transform: scale(1); }
+
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .info {
+      text-align: center;
+      margin-bottom: 3vh;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .info .title  { font-size: clamp(18px, 4vw, 28px); font-weight: 600; margin-bottom: 1vh; }
+    .info .artist { font-size: clamp(16px, 3.5vw, 22px); margin-bottom: 0.5vh; }
+    .info .album  { font-size: clamp(14px, 3vw, 20px); }
+
+    /* Volume-Bar mit Grid */
+    .volume-container {
+      width: 90%;
+      max-width: 500px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: auto auto 1fr auto auto;
+      align-items: center;
+      gap: 0.8em;
+      border-top: 1px solid rgba(255,255,255,0.35);
+      padding-top: 2em;
+      position: relative;
+    }
+
+    .volume-bar {
+      width: 100%;
+      height: .4em;
+      background: #2a2a2a;
+      border-radius: 7px;
+      /overflow: hidden;      /* behält runde Ecken */
+      position: relative;
+	  z-index: 1;
+    }
+    .volume-fill {
+	  position: absolute;
+      top: -0.2em;                 /* leicht nach oben überstehen lassen */
+      bottom: -0.2em;              /* leicht nach unten überstehen lassen */
+      left: 0;
+      background: #666;
+	  border-radius: 7px; 
+      transition: width 0.3s ease;
+      z-index: 2;
+    }
+
+    .volume-icon {
+      width: 1.5em;
+      height: 1.5em;
+      fill: currentColor;
+    }
+
+    .vol-symbol {
+      font-size: 1.5em;
+      /font-weight: bold;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 1.2em;
+	  padding-bottom: 0.3em;
+    }
+
+    /* Landscape Layout */
+    @media (orientation: landscape) {
+      .container {
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 4vw;
+      }
+
+      .cover {
+        width: clamp(300px, 40vw, 600px);
+        height: auto;
+        max-height: 80vh;
+        margin-bottom: 0;
+        object-fit: contain;
+      }
+
+      .right-column {
+        flex: 1;
+        min-width: 300px;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      .info {
+        text-align: left;
+        align-items: flex-start;
+        margin-bottom: 2vh;
+      }
+
+      .volume-container {
+        width: 100%;
+        max-width: 100%;
+        margin-top: auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container { padding: 20px 10px; }
+      .info .title { font-size: 20px; }
+      .info .artist, .info .album { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="container">
+    <!-- Cover mit Default-Bild -->
+    <img class="cover" id="cover"
+         src="<TMPL_VAR NAME='COVER'>"
+         onerror="this.onerror=null; this.src='/plugins/lox-audioserver/templates/images/No-album-art.png';"
+         alt="Cover">
+
+    <!-- Rechte Spalte -->
+    <div class="right-column">
+      <div class="info">
+        <div class="title" id="title"><TMPL_VAR NAME="TITLE"></div>
+        <div class="artist" id="artist"><TMPL_VAR NAME="ARTIST"></div>
+        <div class="album" id="album"><TMPL_VAR NAME="ALBUM"></div>
+      </div>
+
+      <div class="volume-container">
+        <svg class="volume-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+        </svg>
+        <span class="vol-symbol">−</span>
+
+        <div class="volume-bar">
+          <div class="volume-fill" id="volume-fill" style="width:<TMPL_VAR NAME='VOLUME'>%"></div>
+        </div>
+
+        <span class="vol-symbol">+</span>
+        <svg class="volume-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+ <script>
+  let lastCover = null;
+
+  async function refreshData() {
+    try {
+      const res = await fetch("status.cgi?zone=<TMPL_VAR NAME='ZONE_ID'>");
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // Titel/Infos aktualisieren
+      document.getElementById("title").textContent  = data.title  || "";
+      document.getElementById("artist").textContent = data.artist || "";
+      document.getElementById("album").textContent  = data.album  || "";
+
+      const vol = data.volume || 0;
+      document.getElementById("volume-fill").style.width = vol + "%";
+
+      // Cover aktualisieren
+      const coverEl = document.getElementById("cover");
+      if (data.cover) {
+        const newUrl = data.cover;
+        if (newUrl !== lastCover) {
+          coverEl.src = newUrl;
+          document.getElementById("container")
+                  .style.setProperty("--bg-cover", `url('${newUrl}')`);
+          lastCover = newUrl;
+        }
+      } else {
+        coverEl.src = "/plugins/lox-audioserver/templates/images/No-album-art.png";
+        document.getElementById("container")
+                .style.setProperty("--bg-cover", "#111");
+        lastCover = null;
+      }
+    } catch (e) {
+      console.warn("Fehler beim Refresh:", e);
+    }
+  }
+
+  // alle 10 Sekunden aktualisieren
+  setInterval(refreshData, 10000);
+</script>
+</body>
+</html>

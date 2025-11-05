@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Player Ansicht</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+body {
+  margin: 0;
+  padding: 0;
+  background: #111;
+  color: #eee;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  overflow: hidden;
+  --bg-cover: #111;
+}
+
+.container::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-cover) center/cover no-repeat;
+  filter: blur(40px);
+  z-index: 0;
+  opacity: 1;
+  transition: background-image 0s, opacity 0.8s ease;
+}
+
+.container::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 0;
+}
+
+.container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.cover {
+  width: 100%;
+  max-width: 95vw;   /* mehr Breite im Portrait */
+  max-height: 80vh;
+  border-radius: 8px;
+  margin-bottom: 5vh;
+  object-fit: contain;
+  background-color: #444;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.info {
+  text-align: center;
+  margin-bottom: 3vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.info .title  { font-size: clamp(18px, 4vw, 28px); font-weight: 600; margin-bottom: 1vh; }
+.info .artist { font-size: clamp(16px, 3.5vw, 22px); margin-bottom: 0.5vh; }
+.info .album  { font-size: clamp(14px, 3vw, 20px); }
+
+.volume-container {
+  width: 90%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 0.8em;
+  border-top: 1px solid rgba(255,255,255,0.35);
+  padding-top: 2em;
+  position: relative;
+}
+
+.volume-bar {
+  width: 100%;
+  height: .4em;
+  background: #2a2a2a;
+  border-radius: 7px;
+  position: relative;
+  z-index: 1;
+}
+.volume-fill {
+  position: absolute;
+  top: -0.2em;
+  bottom: -0.2em;
+  left: 0;
+  background: #666;
+  border-radius: 7px;
+  transition: width 0.3s ease;
+  z-index: 2;
+}
+
+.zone-header {
+  text-align: center;
+  margin: 0.5em 0 0.5em 0;
+  font-weight: 600;
+  color: #eee;
+  width: 100%;
+  order: -1;
+}
+
+.player-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.volume-icon {
+  width: 1.5em;
+  height: 1.5em;
+  fill: currentColor;
+}
+
+.vol-symbol {
+  font-size: 1.5em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.2em;
+  padding-bottom: 0.3em;
+}
+
+/* Landscape Layout */
+@media (orientation: landscape), (min-width: 900px) {
+  .container {
+    flex-direction: column;   /* Fix: war Tippfehler */
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0;
+  }
+  
+  .zone-header {
+    margin: 0.5em 0; /* enger im Landscape */
+  }
+  
+  .player-body {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+	padding: 0 2vw;
+    gap: 2em;
+    width: 100%;
+	margin-top: 1em;
+  }
+
+  .cover {
+    width: clamp(300px, 40vw, 600px);
+    height: auto;
+    max-height: 80vh;
+    margin-bottom: 0;
+    object-fit: contain;
+  }
+
+  .right-column {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+	margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+	/margin: 0;
+  }
+
+  .info {
+    text-align: left;
+    align-items: flex-start;
+    margin-bottom: 2vh;
+  }
+
+  .volume-container {
+    width: 100%;
+    max-width: 100%;
+    margin-top: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 20px 10px; }
+  .info .title { font-size: 20px; }
+  .info .artist, .info .album { font-size: 16px; }
+}
+
+	
+  </style>
+</head>
+<body>
+  <div class="container" id="container">
+
+    <!-- Zonen-Header -->
+    <h2 id="zone-header" class="zone-header"></h2>
+
+    <!-- Player-Body -->
+    <div class="player-body">
+      
+      <!-- Cover -->
+      <img class="cover" id="cover"
+           src="/plugins/lox-audioserver/templates/images/No-album-art.png"
+           alt="Cover">
+
+      <!-- Rechte Spalte -->
+      <div class="right-column">
+        <div class="info">
+          <div class="title" id="title"></div>
+          <div class="artist" id="artist"></div>
+          <div class="album" id="album"></div>
+        </div>
+
+        <div class="volume-container">
+          <svg class="volume-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+          </svg>
+          <span class="vol-symbol">−</span>
+
+          <div class="volume-bar">
+            <div class="volume-fill" id="volume-fill" style="width:0%"></div>
+          </div>
+
+          <span class="vol-symbol">+</span>
+          <svg class="volume-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const zoneId = urlParams.get("zone") || 1;
+
+async function refreshData() {
+  try {
+    const res = await fetch(`/admin/plugins/lox-audioserver/status.cgi?zone=${zoneId}`);
+    if (!res.ok) {
+      console.warn("Fehler: Status.cgi nicht erreichbar");
+      return;
+    }
+    const data = await res.json();
+
+    // Titel / Artist / Album
+    document.getElementById("title").textContent  = data.title  || "";
+    document.getElementById("artist").textContent = data.artist || "";
+    document.getElementById("album").textContent  = data.album  || "";
+
+    // Lautstärke
+    const vol = data.volume || 0;
+    document.getElementById("volume-fill").style.width = vol + "%";
+
+    // Cover
+    const coverEl = document.getElementById("cover");
+    if (data.cover) {
+      coverEl.src = data.cover;
+      document.getElementById("container")
+              .style.setProperty("--bg-cover", `url('${data.cover}')`);
+    } else {
+      coverEl.src = "/plugins/lox-audioserver/templates/images/No-album-art.png";
+      document.getElementById("container")
+              .style.setProperty("--bg-cover", "#111");
+    }
+
+    // Browser-Titel dynamisch setzen
+    if (data.name) {
+      document.title = `Player Ansicht – Zone ${zoneId} | ${data.name}`;
+      document.getElementById("zone-header").textContent =
+        `Zone ${zoneId} | ${data.name}`;
+    } else {
+      document.title = `Player Ansicht – Zone ${zoneId}`;
+      document.getElementById("zone-header").textContent =
+        `Zone ${zoneId}`;
+    }
+
+  } catch (e) {
+    console.warn("Fehler beim Refresh:", e);
+  }
+}
+
+setInterval(refreshData, 5000);
+refreshData();
+</script>
+
+
+</body>
+</html>

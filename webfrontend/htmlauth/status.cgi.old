@@ -1,0 +1,62 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use CGI;
+use JSON;
+use LWP::UserAgent;
+
+my $cgi     = CGI->new;
+my $zone_id = $cgi->param('zone') // '';
+my $plugin  = "lox-audioserver";
+
+print $cgi->header('application/json');
+
+if ($zone_id eq '') {
+    print encode_json({ error => "Zone-ID fehlt" });
+    exit;
+}
+
+my $serverhost = `hostname -I | awk '{print \$1}'`;
+chomp $serverhost;
+my $serverport = '7090';
+
+my $ua  = LWP::UserAgent->new(timeout => 5);
+my $res = $ua->get("http://$serverhost:$serverport/admin/api/zones/states");
+
+if (!$res->is_success) {
+    print encode_json({ error => "API nicht erreichbar" });
+    exit;
+}
+
+my $data = decode_json($res->decoded_content);
+my ($title, $artist, $album, $track, $time, $volume, $cover, $progress) = ("", "", "", "", "", "", "", 0);
+
+foreach my $zone (@{$data->{zones}}) {
+    next unless $zone->{id} eq $zone_id;
+    $title  = $zone->{title}    // '';
+    $artist = $zone->{artist}   // '';
+    $album  = $zone->{album}    // '';
+    $track  = $zone->{track}    // '';   # nur falls vorhanden
+    $time   = $zone->{time}     // '';
+    $volume = $zone->{volume}   // 0;
+    $cover  = $zone->{coverUrl} // "/plugins/$plugin/covers/zone$zone_id.png";
+
+    if ($time =~ m{(\d+):(\d+)\s*/\s*(\d+):(\d+)}) {
+        my ($emin, $esec, $tmin, $tsec) = ($1, $2, $3, $4);
+        my $etotal = $emin * 60 + $esec;
+        my $ttotal = $tmin * 60 + $tsec;
+        $progress = $ttotal ? int(($etotal / $ttotal) * 100) : 0;
+    }
+    last;
+}
+
+print encode_json({
+    title    => $title,
+    artist   => $artist,
+    album    => $album,
+    track    => $track,
+    time     => $time,
+    volume   => $volume,
+    cover    => $cover,
+    progress => $progress
+});
