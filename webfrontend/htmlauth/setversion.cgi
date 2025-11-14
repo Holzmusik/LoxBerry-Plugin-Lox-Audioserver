@@ -29,9 +29,14 @@ if ($version ne '') {
     # Upgrade-Script im Hintergrund starten
     system("bash $upgradescript &");
 
+    # Automatische Weiterleitung zurück ins index.cgi
+    print $cgi->redirect("/admin/plugins/$plugin/index.cgi");
+
 } else {
+    print "<html><head><title>Fehler</title></head><body>";
     print "<h2>Fehler</h2>";
     print "<p>Keine Version ausgewählt.</p>";
+    print "</body></html>";
 }
 
 print "</body></html>";
