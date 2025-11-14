@@ -26,7 +26,13 @@ elsif ($action eq 'restart') {
     sleep 2;
 }
 elsif ($action eq 'upgrade') {
-    system("sudo docker pull ghcr.io/rudyberends/lox-audioserver:latest && sudo docker restart $plugin");
+    # Version aus Config lesen
+    my $selected_version = "latest";
+    if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
+        $selected_version = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
+        chomp $selected_version;
+    }
+    system("sudo docker pull ghcr.io/rudyberends/lox-audioserver:$selected_version && sudo docker rm -f $plugin && sudo docker run -d --name $plugin --restart=always -p 7090:7090 -p 7091:7091 -p 7095:7095 ghcr.io/rudyberends/lox-audioserver:$selected_version");
     sleep 2;
 }
 
@@ -125,6 +131,23 @@ if (!@players) {
     };
 }
 
+# --- Versionen aus GHCR holen ---
+my @versions;
+eval {
+    my $tags_json = `curl -s https://ghcr.io/v2/rudyberends/lox-audioserver/tags/list`;
+    my $tags = decode_json($tags_json);
+
+    my $current_version = "latest";
+    if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
+        $current_version = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
+        chomp $current_version;
+    }
+
+    foreach my $tag (@{$tags->{tags}}) {
+        push @versions, { TAG => $tag, SELECTED => ($tag eq $current_version ? 1 : 0) };
+    }
+};
+
 # --- Template laden ---
 my $templatefile = "$lbphtmldir/templates/index.html";
 my $template     = LoxBerry::System::read_file($templatefile);
@@ -144,6 +167,7 @@ $templateout->param(
     SERVERHOST    => $serverhost,
     SERVERPORT    => $serverport,
     PLAYERS       => \@players,
+    VERSIONS      => \@versions,   # <--- NEU
 );
 
 # --- Ausgabe ---
