@@ -161,6 +161,13 @@ my $templateout = HTML::Template->new_scalar_ref(
     die_on_bad_params => 0,
 );
 
+# --- Aktuellen Branch aus Config lesen (für Anzeige im Template) ---
+my $current_branch = "main";
+if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
+    $current_branch = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
+    chomp $current_branch;
+}
+
 # --- Variablen ins Template ---
 $templateout->param(
     STATUS        => $status,
@@ -169,7 +176,8 @@ $templateout->param(
     SERVERHOST    => $serverhost,
     SERVERPORT    => $serverport,
     PLAYERS       => \@players,
-    VERSIONS      => \@branches,   # <--- NEU
+    VERSIONS      => \@branches,   
+    CURRENTBRANCH => $current_branch,   
 );
 
 # --- Ausgabe ---
