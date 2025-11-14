@@ -4,8 +4,17 @@ PLUGIN="lox-audioserver"
 PLUGINPATH="/opt/loxberry/bin/plugins/$PLUGIN"
 APPDIR="$PLUGINPATH/app"
 LOGFILE="/opt/loxberry/log/plugins/$PLUGIN/upgrade.log"
+CONFIGFILE="/opt/loxberry/config/plugins/$PLUGIN/version.txt"
 
 echo ">>> upgrade.sh für $PLUGIN gestartet" >> "$LOGFILE"
+
+# Gewünschte Version aus Config lesen (Default: latest)
+if [ -f "$CONFIGFILE" ]; then
+    SELECTED_VERSION=$(cat "$CONFIGFILE")
+else
+    SELECTED_VERSION="latest"
+fi
+echo "Verwende Version: $SELECTED_VERSION" >> "$LOGFILE"
 
 # Alte Konfigurationsdateien migrieren
 if [ -f "/opt/loxberry/config/plugins/$PLUGIN/config.json" ]; then
@@ -14,41 +23,27 @@ if [ -f "/opt/loxberry/config/plugins/$PLUGIN/config.json" ]; then
        "/opt/loxberry/config/plugins/$PLUGIN/config.json.bak" >> "$LOGFILE" 2>&1
 fi
 
-# Node-Repo aktualisieren oder neu klonen
-if [ -d "$APPDIR" ]; then
-    echo "Update des Node-Repos..." >> "$LOGFILE"
-    cd "$APPDIR" || exit 1
-    if command -v git >/dev/null 2>&1; then
-        # Aktuelle und Remote-Version vergleichen
-        LOCAL_HASH=$(git rev-parse HEAD)
-        REMOTE_HASH=$(git ls-remote origin main | awk '{print $1}')
-
-        if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
-            echo "Neue Version gefunden, update..." >> "$LOGFILE"
-            git reset --hard >> "$LOGFILE" 2>&1
-            git pull --rebase >> "$LOGFILE" 2>&1
-            npm install --production >> "$LOGFILE" 2>&1
-            npm run build >> "$LOGFILE" 2>&1 || true
-        else
-            echo "Keine Änderungen im Repo – überspringe npm install/build." >> "$LOGFILE"
-        fi
-    else
-        echo "Git nicht verfügbar – versuche Fallback mit Release-ZIP ..." >> "$LOGFILE"
-        wget -O /tmp/lox-audioserver.zip https://github.com/rudyberends/lox-audioserver/archive/refs/heads/main.zip >> "$LOGFILE" 2>&1
-        unzip -o /tmp/lox-audioserver.zip -d /tmp >> "$LOGFILE" 2>&1
-        rm -rf "$APPDIR"/*
-        mv /tmp/lox-audioserver-main/* "$APPDIR"/
-        rm -rf /tmp/lox-audioserver-main /tmp/lox-audioserver.zip
-        npm install --production >> "$LOGFILE" 2>&1
-        npm run build >> "$LOGFILE" 2>&1 || true
-    fi
-else
-    echo "App-Verzeichnis nicht gefunden – klone neu..." >> "$LOGFILE"
-    git clone --branch main https://github.com/rudyberends/lox-audioserver.git "$APPDIR" >> "$LOGFILE" 2>&1
-    cd "$APPDIR" || exit 1
-    npm install --production >> "$LOGFILE" 2>&1
-    npm run build >> "$LOGFILE" 2>&1 || true
+# Alten Container entfernen, falls vorhanden
+if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGIN$"; then
+    echo "Entferne alten Container $PLUGIN ..." >> "$LOGFILE"
+    docker rm -f $PLUGIN >> "$LOGFILE" 2>&1
 fi
+
+# Neues Image ziehen
+echo "Ziehe Docker-Image ghcr.io/rudyberends/lox-audioserver:$SELECTED_VERSION ..." >> "$LOGFILE"
+docker pull ghcr.io/rudyberends/lox-audioserver:$SELECTED_VERSION >> "$LOGFILE" 2>&1
+
+# Container starten
+echo "Starte neuen Container mit Version $SELECTED_VERSION ..." >> "$LOGFILE"
+docker run -d \
+  --name $PLUGIN \
+  --restart=always \
+  -p 7090:7090 \
+  -p 7091:7091 \
+  -p 7095:7095 \
+  -v "$APPDIR/data:/app/data" \
+  -v "$APPDIR/logs:/app/logs" \
+  ghcr.io/rudyberends/lox-audioserver:$SELECTED_VERSION >> "$LOGFILE" 2>&1
 
 # Rechte korrigieren
 chown -R loxberry:loxberry "$PLUGINPATH"
