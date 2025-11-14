@@ -131,20 +131,22 @@ if (!@players) {
     };
 }
 
-# --- Versionen aus GHCR holen ---
-my @versions;
+# --- Branches aus GitHub holen ---
+my @branches;
 eval {
-    my $tags_json = `curl -s https://ghcr.io/v2/rudyberends/lox-audioserver/tags/list`;
-    my $tags = decode_json($tags_json);
+    my $branches_json = `curl -s https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
+    my $branches = decode_json($branches_json);
 
-    my $current_version = "latest";
+    # Aktuellen Branch aus Config lesen (Fallback: main)
+    my $current_branch = "main";
     if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
-        $current_version = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
-        chomp $current_version;
+        $current_branch = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
+        chomp $current_branch;
     }
 
-    foreach my $tag (@{$tags->{tags}}) {
-        push @versions, { TAG => $tag, SELECTED => ($tag eq $current_version ? 1 : 0) };
+    foreach my $branch (@{$branches}) {
+        my $name = $branch->{name};
+        push @branches, { TAG => $name, SELECTED => ($name eq $current_branch ? 1 : 0) };
     }
 };
 
@@ -167,7 +169,7 @@ $templateout->param(
     SERVERHOST    => $serverhost,
     SERVERPORT    => $serverport,
     PLAYERS       => \@players,
-    VERSIONS      => \@versions,   # <--- NEU
+    VERSIONS      => \@branches,   # <--- NEU
 );
 
 # --- Ausgabe ---
