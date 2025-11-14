@@ -23,7 +23,7 @@ if ($version ne '') {
     system("bash $upgradescript &");
 
     # Nur Redirect zurück ins index.cgi
-    print $cgi->redirect("/plugins/$plugin/index.cgi");
+    print $cgi->redirect("/admin/plugins/$plugin/index.cgi");
 
 } else {
     print $cgi->header('text/html; charset=UTF-8');
