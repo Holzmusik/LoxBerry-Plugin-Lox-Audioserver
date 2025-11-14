@@ -166,6 +166,23 @@
     <div class="box">
       <pre><TMPL_VAR NAME="LOGS"></pre>
     </div>
+    <h2 class="boxtitle">Version auswählen</h2>
+    <div class="box">
+      <form method="post" action="/admin/plugins/lox-audioserver/setversion.cgi" style="margin:0;">
+        <label for="version">Verfügbare Version:</label>
+        <select name="version" id="version">
+          <!-- Dynamisch gefüllt durch Template -->
+          <TMPL_LOOP NAME="VERSIONS">
+            <option value="<TMPL_VAR NAME='TAG'>" <TMPL_IF NAME="SELECTED">selected</TMPL_IF>>
+              <TMPL_VAR NAME="TAG">
+            </option>
+          </TMPL_LOOP>
+        </select>
+        <div class="buttonrow" style="margin-top:10px;">
+          <button type="submit">Upgrade starten</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div id="players" class="tab">
