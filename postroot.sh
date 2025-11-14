@@ -8,10 +8,22 @@ LBHOMEDIR=/opt/loxberry
 APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
 WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
 
-# Docker prüfen
+# Docker prüfen und ggf. installieren
 if ! command -v docker >/dev/null 2>&1; then
-    echo "FEHLER: Docker ist nicht installiert! Bitte Docker nachinstallieren."
-    exit 1
+    echo "Docker ist nicht installiert – Installation wird gestartet ..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y docker.io
+        systemctl enable docker
+        systemctl start docker
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y docker
+        systemctl enable docker
+        systemctl start docker
+    else
+        echo "FEHLER: Paketmanager nicht erkannt – bitte Docker manuell installieren."
+        exit 1
+    fi
 fi
 
 # In Plugin-Verzeichnis wechseln
