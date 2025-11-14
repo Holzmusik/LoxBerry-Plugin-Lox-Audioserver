@@ -30,7 +30,7 @@ if ($version ne '') {
     system("bash $upgradescript &");
 
     # Automatische Weiterleitung zurück ins index.cgi
-    print $cgi->redirect("/admin/plugins/$plugin/index.cgi");
+    print $cgi->redirect("/plugins/$plugin/index.cgi");
 
 } else {
     print "<html><head><title>Fehler</title></head><body>";
