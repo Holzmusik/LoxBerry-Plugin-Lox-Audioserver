@@ -70,5 +70,34 @@ for script in index.cgi proxy.cgi; do
     fi
 done
 
-echo "### Lox-Audioserver postroot.sh abgeschlossen (Docker, Repo-Pfade)."
+### Music Assistant Integration ###
+PLUGINNAME_MASS=music-assistant
+
+# Alten Container entfernen, falls vorhanden
+if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGINNAME_MASS$"; then
+    echo "Entferne alten Container $PLUGINNAME_MASS ..."
+    docker rm -f $PLUGINNAME_MASS
+fi
+
+# Neueste Version ziehen
+echo "Ziehe aktuelles Music Assistant Docker-Image ..."
+docker pull ghcr.io/music-assistant/server:latest
+
+# Verzeichnisse für Config und Media anlegen
+echo "Erstelle Config- und Media-Verzeichnisse für Music Assistant ..."
+mkdir -p "$APPDIR/mass-config" "$APPDIR/mass-media"
+chown -R loxberry:loxberry "$APPDIR/mass-config" "$APPDIR/mass-media"
+
+# Container starten
+echo "Starte neuen Container $PLUGINNAME_MASS ..."
+docker run -d \
+  --name $PLUGINNAME_MASS \
+  --restart=always \
+  -p 8095:8095 \
+  -v "$APPDIR/mass-config:/config" \
+  -v "$APPDIR/mass-media:/media" \
+  -e TZ=Europe/Berlin \
+  ghcr.io/music-assistant/server:latest
+
+echo "### postroot.sh abgeschlossen – Lox-Audioserver + Music Assistant laufen jetzt in Docker."
 exit 0
