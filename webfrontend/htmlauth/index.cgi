@@ -12,6 +12,7 @@ use JSON;
 my $cgi    = CGI->new;
 my $action = $cgi->param('action') // '';
 my $plugin = "lox-audioserver";
+my $plugin_mass = "music-assistant";
 
 # --- Aktionen über Docker steuern ---
 if ($action eq 'start') {
@@ -26,7 +27,6 @@ elsif ($action eq 'restart') {
     sleep 2;
 }
 elsif ($action eq 'upgrade') {
-    # Version aus Config lesen
     my $selected_version = "latest";
     if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
         $selected_version = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
@@ -36,10 +36,31 @@ elsif ($action eq 'upgrade') {
     sleep 2;
 }
 
+# --- Aktionen für Music Assistant ---
+if ($action eq 'start_mass') {
+    system("sudo docker start $plugin_mass");
+    sleep 2;
+}
+elsif ($action eq 'stop_mass') {
+    system("sudo docker stop $plugin_mass");
+}
+elsif ($action eq 'restart_mass') {
+    system("sudo docker restart $plugin_mass");
+    sleep 2;
+}
+elsif ($action eq 'upgrade_mass') {
+    system("sudo docker pull ghcr.io/music-assistant/server:latest && sudo docker rm -f $plugin_mass && sudo docker run -d --name $plugin_mass --restart=always -p 8095:8095 -v /opt/loxberry/bin/plugins/lox-audioserver/mass-config:/config -v /opt/loxberry/bin/plugins/lox-audioserver/mass-media:/media -e TZ=Europe/Berlin ghcr.io/music-assistant/server:latest");
+    sleep 2;
+}
+
 # --- Status abfragen und mappen ---
 my $rawstatus = `sudo docker inspect -f '{{.State.Status}}' $plugin 2>/dev/null`;
 chomp $rawstatus;
 my $status = ($rawstatus eq 'running') ? 'active' : 'inactive';
+
+my $rawstatus_mass = `sudo docker inspect -f '{{.State.Status}}' $plugin_mass 2>/dev/null`;
+chomp $rawstatus_mass;
+my $status_mass = ($rawstatus_mass eq 'running') ? 'active' : 'inactive';
 
 # --- Plugin-Konfiguration laden ---
 my $cfgfile = "$lbpconfigdir/plugins/$lbpplugindir/plugin.cfg";
@@ -87,7 +108,6 @@ eval {
             my $volume = $zone->{volume}     // '';
             my $coverurl = $zone->{coverUrl} // '';
 
-            # Cover lokal speichern
             my $coverfile   = "/opt/loxberry/webfrontend/html/plugins/$lbpplugindir/covers/zone$id.png";
             my $local_cover = "/plugins/$lbpplugindir/covers/zone$id.png";
 
@@ -102,7 +122,6 @@ eval {
                 }
             }
 
-            # Link zur gemeinsamen Player-Seite
             my $player_url = "/plugins/$lbpplugindir/player.html?zone=$id";
 
             push @players, {
@@ -137,7 +156,6 @@ eval {
     my $branches_json = `curl -s https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
     my $branches = decode_json($branches_json);
 
-    # Aktuellen Branch aus Config lesen (Fallback: main)
     my $current_branch = "main";
     if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
         $current_branch = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
@@ -161,7 +179,6 @@ my $templateout = HTML::Template->new_scalar_ref(
     die_on_bad_params => 0,
 );
 
-# --- Aktuellen Branch aus Config lesen (für Anzeige im Template) ---
 my $current_branch = "main";
 if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
     $current_branch = LoxBerry::System::read_file("/opt/loxberry/config/plugins/$lbpplugindir/version.txt");
@@ -171,16 +188,17 @@ if (-e "/opt/loxberry/config/plugins/$lbpplugindir/version.txt") {
 # --- Variablen ins Template ---
 $templateout->param(
     STATUS        => $status,
+    STATUS_MASS   => $status_mass,
     LOGS          => $logs,
     PLUGINVERSION => LoxBerry::System::pluginversion(),
     SERVERHOST    => $serverhost,
     SERVERPORT    => $serverport,
     PLAYERS       => \@players,
-    VERSIONS      => \@branches,   
-    CURRENTBRANCH => $current_branch,   
+    VERSIONS      => \@branches,
+    CURRENTBRANCH => $current_branch,
 );
 
 # --- Ausgabe ---
-LoxBerry::Web::lbheader("Lox-Audioserver", "", "");
+LoxBerry::Web::lbheader("Lox-Audioserver + Music Assistant", "", "");
 print $templateout->output();
 LoxBerry::Web::lbfooter();
