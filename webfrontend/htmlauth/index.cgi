@@ -153,7 +153,7 @@ if (!@players) {
 # --- Branches aus GitHub holen ---
 my @branches;
 eval {
-    my $branches_json = `curl -s https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
+    my $branches_json = `curl -s -H "User-Agent: LoxBerry" https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
     my $branches = decode_json($branches_json);
 
     my $current_branch = "main";
@@ -167,6 +167,11 @@ eval {
         push @branches, { TAG => $name, SELECTED => ($name eq $current_branch ? 1 : 0) };
     }
 };
+
+# Fallback falls keine Branches gefunden
+if (!@branches) {
+    @branches = ( { TAG => "main", SELECTED => 1 } );
+}
 
 # --- Template laden ---
 my $templatefile = "$lbphtmldir/templates/index.html";
