@@ -46,11 +46,9 @@ if ($action) {
     }
 
     # Redirect zurück zur Hauptseite
-    print $cgi->header(
-        -type    => 'text/html',
-        -status  => '302 Found',
-        -location => '/admin/plugins/lox-audioserver/index.cgi'
-    );
+    print "Status: 302 Found\n";
+    print "Location: /admin/plugins/lox-audioserver/index.cgi\n";
+    print "Content-Type: text/html\n\n";
     exit;
 }
 
