@@ -49,7 +49,7 @@ if ($action) {
     # Redirect zurück zur Hauptseite
     print $cgi->header(
         -type    => 'text/html',
-        -status  => '302 Found',
+        -status  => 302,
         -location => '/admin/plugins/lox-audioserver/index.cgi'
     );
     exit;
