@@ -20,17 +20,16 @@ my $plugin_mass = "music-assistant";
 if ($action eq 'start') {
     system("sudo docker start $plugin");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 elsif ($action eq 'stop') {
     system("sudo docker stop $plugin");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
+    exit;
 }
 elsif ($action eq 'restart') {
     system("sudo docker restart $plugin");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 elsif ($action eq 'upgrade') {
@@ -41,7 +40,6 @@ elsif ($action eq 'upgrade') {
     }
     system("sudo docker pull ghcr.io/rudyberends/lox-audioserver:$selected_version && sudo docker rm -f $plugin && sudo docker run -d --name $plugin --restart=always -p 7090:7090 -p 7091:7091 -p 7095:7095 ghcr.io/rudyberends/lox-audioserver:$selected_version");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 
@@ -49,7 +47,6 @@ elsif ($action eq 'upgrade') {
 if ($action eq 'start_mass') {
     system("sudo docker start $plugin_mass");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 elsif ($action eq 'stop_mass') {
@@ -59,13 +56,11 @@ elsif ($action eq 'stop_mass') {
 elsif ($action eq 'restart_mass') {
     system("sudo docker restart $plugin_mass");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 elsif ($action eq 'upgrade_mass') {
     system("sudo docker pull ghcr.io/music-assistant/server:latest && sudo docker rm -f $plugin_mass && sudo docker run -d --name $plugin_mass --restart=always -p 8095:8095 -v /opt/loxberry/bin/plugins/lox-audioserver/mass-config:/config -v /opt/loxberry/bin/plugins/lox-audioserver/mass-media:/media -e TZ=Europe/Berlin ghcr.io/music-assistant/server:latest");
     print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
-    sleep 2;
     exit;
 }
 
