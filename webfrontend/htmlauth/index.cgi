@@ -16,6 +16,8 @@ my $action = $cgi->param('action') // '';
 my $plugin = "lox-audioserver";
 my $plugin_mass = "music-assistant";
 
+warn "lbpplugindir=$lbpplugindir, lbpconfigdir=$lbpconfigdir, lbphtmldir=$lbphtmldir\n";
+
 # --- Aktionen über Docker steuern ---
 if ($action) {
     if ($action eq 'start') {
@@ -46,7 +48,7 @@ if ($action) {
     # Redirect zurück zur Hauptseite
     print $cgi->header(
         -type    => 'text/html',
-        -status  => 302,
+        -status  => '302 Found',
         -location => '/admin/plugins/lox-audioserver/index.cgi'
     );
     exit;
