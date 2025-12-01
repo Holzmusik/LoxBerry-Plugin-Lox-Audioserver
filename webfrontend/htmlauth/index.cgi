@@ -15,9 +15,6 @@ my $cgi    = CGI->new;
 my $action = $cgi->param('action') // '';
 my $plugin = "lox-audioserver";
 my $plugin_mass = "music-assistant";
-my $lbpplugindir = LoxBerry::System::plugindb_get_ourplugindir();
-my $lbpconfigdir = $LoxBerry::System::lbpconfigdir;
-my $lbphtmldir   = $LoxBerry::System::lbphtmldir;
 
 # --- Aktionen über Docker steuern ---
 if ($action) {
