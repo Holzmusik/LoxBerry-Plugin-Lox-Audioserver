@@ -153,7 +153,7 @@ if (!@players) {
 # --- Branches aus GitHub holen ---
 my @branches;
 eval {
-    my $branches_json = `curl -s -H "User-Agent: LoxBerry" https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
+    my $branches_json = `curl -s https://api.github.com/repos/rudyberends/lox-audioserver/branches`;
     my $branches = decode_json($branches_json);
 
     my $current_branch = "main";
