@@ -47,7 +47,11 @@ if ($action) {
     }
 
     # Redirect zurück zur Hauptseite
-    print $cgi->redirect("/admin/plugins/lox-audioserver/index.cgi");
+    print $cgi->header(
+        -type    => 'text/html',
+        -status  => '302 Found',
+        -location => '/admin/plugins/lox-audioserver/index.cgi'
+    );
     exit;
 }
 
