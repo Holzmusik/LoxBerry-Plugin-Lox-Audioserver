@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Lox-Audioserver</title>
+  <title>Lox-Audioserver + Music Assistant</title>
   <style>
     body { font-family: Arial, sans-serif; margin:0; background:#f9f9f9; }
 
@@ -158,6 +158,24 @@
           <button name="action" value="start">Start</button>
           <button name="action" value="stop">Stop</button>
           <button name="action" value="restart">Restart</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Music Assistant -->
+    <h2 class="boxtitle">Music Assistant</h2>
+    <div class="servicestatus">
+      <div>Service Status:</div>
+      <div id="servicestatusicon_mass">
+        <img src="./images/unknown_20.png" alt="Status Icon">
+      </div>
+      <div class="status"><TMPL_VAR NAME="STATUS_MASS"></div>
+      <div class="buttonrow">
+        <form method="get" style="margin:0; display:flex; gap:5px;">
+          <button name="action" value="start_mass">Start</button>
+          <button name="action" value="stop_mass">Stop</button>
+          <button name="action" value="restart_mass">Restart</button>
+          <button name="action" value="upgrade_mass">Upgrade</button>
         </form>
       </div>
     </div>
