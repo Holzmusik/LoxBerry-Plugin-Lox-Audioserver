@@ -18,7 +18,7 @@ fi
 
 # Container aktualisieren
 echo "Ziehe aktuelles Docker-Image ..." >> "$LOGFILE"
-docker pull ghcr.io/rudyberends/lox-audioserver:latest >> "$LOGFILE" 2>&1
+docker pull ghcr.io/rudyberends/lox-audioserver:testing >> "$LOGFILE" 2>&1
 
 # Container neu starten
 if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGIN$"; then
