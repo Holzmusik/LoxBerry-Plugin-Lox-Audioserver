@@ -47,7 +47,7 @@ fi
 
 # Immer die neueste main-Version ziehen
 echo "Ziehe aktuelles Docker-Image (latest = main) ..."
-docker pull ghcr.io/rudyberends/lox-audioserver:latest
+docker pull ghcr.io/rudyberends/lox-audioserver:testing
 
 # Container starten mit den Pfaden aus dem Repo
 echo "Starte neuen Container $PLUGINNAME ..."
@@ -59,7 +59,7 @@ docker run -d \
   -p 7095:7095 \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
-  ghcr.io/rudyberends/lox-audioserver:latest
+  ghcr.io/rudyberends/lox-audioserver:testing
 
 # CGI-Skripte Rechte setzen (Proxy & Index)
 echo "Setze Rechte für CGI-Skripte ..."
