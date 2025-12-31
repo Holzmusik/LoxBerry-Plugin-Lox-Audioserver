@@ -34,6 +34,6 @@ docker run -d \
   -p 7095:7095 \
   -v "$PLUGINPATH/data:/app/data" \
   -v "$PLUGINPATH/logs:/app/logs" \
-  ghcr.io/rudyberends/lox-audioserver:latest >> "$LOGFILE" 2>&1
+  ghcr.io/rudyberends/lox-audioserver:testing >> "$LOGFILE" 2>&1
 
 echo ">>> postupgrade.sh fertig" >> "$LOGFILE"
