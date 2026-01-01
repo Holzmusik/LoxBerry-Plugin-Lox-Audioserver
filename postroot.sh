@@ -54,9 +54,7 @@ echo "Starte neuen Container $PLUGINNAME ..."
 docker run -d \
   --name $PLUGINNAME \
   --restart=always \
-  -p 7090:7090 \
-  -p 7091:7091 \
-  -p 7095:7095 \
+  --network host \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
   ghcr.io/rudyberends/lox-audioserver:testing
