@@ -29,9 +29,7 @@ fi
 docker run -d \
   --name $PLUGIN \
   --restart=always \
-  -p 7090:7090 \
-  -p 7091:7091 \
-  -p 7095:7095 \
+  --network host \
   -v "$PLUGINPATH/data:/app/data" \
   -v "$PLUGINPATH/logs:/app/logs" \
   ghcr.io/rudyberends/lox-audioserver:testing >> "$LOGFILE" 2>&1
