@@ -79,7 +79,7 @@ fi
 
 # Neueste Version ziehen
 echo "Ziehe aktuelles Music Assistant Docker-Image ..."
-docker pull ghcr.io/music-assistant/server:4.x-branch
+docker pull ghcr.io/music-assistant/server:latest
 
 # Verzeichnisse für Config und Media anlegen
 echo "Erstelle Config- und Media-Verzeichnisse für Music Assistant ..."
@@ -95,7 +95,7 @@ docker run -d \
   -v "$APPDIR/mass-config:/config" \
   -v "$APPDIR/mass-media:/media" \
   -e TZ=Europe/Berlin \
-  ghcr.io/music-assistant/server:4.x-branch
+  ghcr.io/music-assistant/server:latest
 
 echo "### postroot.sh abgeschlossen – Lox-Audioserver + Music Assistant laufen jetzt in Docker."
 exit 0
