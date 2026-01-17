@@ -47,7 +47,7 @@ fi
 
 # Immer die neueste main-Version ziehen
 echo "Ziehe aktuelles Docker-Image (latest = main) ..."
-docker pull ghcr.io/rudyberends/lox-audioserver:testing
+docker pull ghcr.io/rudyberends/lox-audioserver:4.x-branch
 
 # Container starten mit den Pfaden aus dem Repo
 echo "Starte neuen Container $PLUGINNAME ..."
@@ -57,7 +57,7 @@ docker run -d \
   --network host \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
-  ghcr.io/rudyberends/lox-audioserver:testing
+  ghcr.io/rudyberends/lox-audioserver:4.x-branch
 
 # CGI-Skripte Rechte setzen (Proxy & Index)
 echo "Setze Rechte für CGI-Skripte ..."
@@ -79,7 +79,7 @@ fi
 
 # Neueste Version ziehen
 echo "Ziehe aktuelles Music Assistant Docker-Image ..."
-docker pull ghcr.io/music-assistant/server:latest
+docker pull ghcr.io/music-assistant/server:4.x-branch
 
 # Verzeichnisse für Config und Media anlegen
 echo "Erstelle Config- und Media-Verzeichnisse für Music Assistant ..."
@@ -95,7 +95,7 @@ docker run -d \
   -v "$APPDIR/mass-config:/config" \
   -v "$APPDIR/mass-media:/media" \
   -e TZ=Europe/Berlin \
-  ghcr.io/music-assistant/server:latest
+  ghcr.io/music-assistant/server:4.x-branch
 
 echo "### postroot.sh abgeschlossen – Lox-Audioserver + Music Assistant laufen jetzt in Docker."
 exit 0
