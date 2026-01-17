@@ -52,7 +52,7 @@ fi
 # Repository klonen oder aktualisieren
 if [ ! -d "$APPDIR/repo" ]; then
     echo "Klonen des 4.x-branch ..."
-    git clone --branch "$GITBRANCH" "$GITURL" "$APPDIR/repo" else
+    git clone --branch "$GITBRANCH" "$GITURL" "$APPDIR/repo"
 else   
    echo "Aktualisiere bestehendes Repository ..."
    cd "$APPDIR/repo"
@@ -73,7 +73,8 @@ docker run -d \
   --network host \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
-
+  "$LOCALIMG"
+  
 # CGI-Skripte Rechte setzen (Proxy & Index)
 echo "Setze Rechte für CGI-Skripte ..."
 for script in index.cgi proxy.cgi; do
