@@ -7,6 +7,10 @@ PLUGINNAME=lox-audioserver
 LBHOMEDIR=/opt/loxberry
 APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
 WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
+GITURL="https://github.com/rudyberends/lox-audioserver.git"
+GITBRANCH="4.x-branch"
+LOCALIMG="lox-audioserver:4.x-local"
+
 
 # Docker prüfen und ggf. installieren
 if ! command -v docker >/dev/null 2>&1; then
@@ -45,9 +49,21 @@ if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGINNAME$"; then
     docker rm -f $PLUGINNAME
 fi
 
-# Immer die neueste main-Version ziehen
-echo "Ziehe aktuelles Docker-Image (latest = main) ..."
-docker pull ghcr.io/rudyberends/lox-audioserver:4.x-branch
+# Repository klonen oder aktualisieren
+if [ ! -d "$APPDIR/repo" ]; then
+    echo "Klonen des 4.x-branch ..."
+    git clone --branch "$GITBRANCH" "$GITURL" "$APPDIR/repo" else
+else   
+   echo "Aktualisiere bestehendes Repository ..."
+   cd "$APPDIR/repo"
+   git fetch
+   git reset --hard origin/$GITBRANCH
+fi
+
+# Docker-Image lokal bauen
+echo "Baue lokales Docker-Image $LOCALIMG ..."
+cd "$APPDIR/repo"
+docker build -t "$LOCALIMG" .
 
 # Container starten mit den Pfaden aus dem Repo
 echo "Starte neuen Container $PLUGINNAME ..."
@@ -57,7 +73,6 @@ docker run -d \
   --network host \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
-  ghcr.io/rudyberends/lox-audioserver:4.x-branch
 
 # CGI-Skripte Rechte setzen (Proxy & Index)
 echo "Setze Rechte für CGI-Skripte ..."
