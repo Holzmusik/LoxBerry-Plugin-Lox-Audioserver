@@ -8,8 +8,8 @@ LBHOMEDIR=/opt/loxberry
 APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
 WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
 GITURL="https://github.com/rudyberends/lox-audioserver.git"
-GITBRANCH="4.x-branch"
-LOCALIMG="lox-audioserver:4.x-local"
+GITBRANCH="beta"
+LOCALIMG="lox-audioserver:beta-local"
 
 
 # Docker prüfen und ggf. installieren
@@ -51,7 +51,7 @@ fi
 
 # Repository klonen oder aktualisieren
 if [ ! -d "$APPDIR/repo" ]; then
-    echo "Klonen des 4.x-branch ..."
+    echo "Klonen des beta-branch ..."
     git clone --branch "$GITBRANCH" "$GITURL" "$APPDIR/repo"
 else   
    echo "Aktualisiere bestehendes Repository ..."
