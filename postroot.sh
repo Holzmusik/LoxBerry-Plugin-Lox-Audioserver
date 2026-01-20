@@ -85,6 +85,11 @@ Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 
+# >>> Mount-Rechte erlauben <<<
+CapabilityBoundingSet=CAP_SYS_ADMIN
+AmbientCapabilities=CAP_SYS_ADMIN
+NoNewPrivileges=no
+
 [Install]
 WantedBy=multi-user.target
 EOF
