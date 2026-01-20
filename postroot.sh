@@ -10,7 +10,7 @@ LBHOMEDIR=/opt/loxberry
 APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
 WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
 GITURL="https://github.com/rudyberends/lox-audioserver.git"
-GITBRANCH="beta"
+GITBRANCH="4.x-branch"
 SERVICEFILE=/etc/systemd/system/lox-audioserver.service
 
 # ------------------------------------------------------------
