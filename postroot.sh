@@ -77,8 +77,8 @@ After=network.target sound.target
 
 [Service]
 Type=simple
-User=loxberry
-Group=loxberry
+User=root
+Group=root
 WorkingDirectory=$APPDIR/repo
 ExecStart=$APPDIR/venv/bin/python server.py
 Restart=always
