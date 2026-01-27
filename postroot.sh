@@ -107,7 +107,7 @@ echo "Starte neuen Container $PLUGINNAME_MASS ..."
 docker run -d \
   --name $PLUGINNAME_MASS \
   --restart=always \
-  -p 8095:8095 \
+  --network host \
   -v "$APPDIR/mass-config:/config" \
   -v "$APPDIR/mass-media:/media" \
   -e TZ=Europe/Berlin \
