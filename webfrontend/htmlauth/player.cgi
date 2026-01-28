@@ -7,15 +7,18 @@ use LWP::UserAgent;
 use HTML::Template;
 use JSON;
 use File::Path qw(make_path);
+use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
 
 my $cgi     = CGI->new;
 my $zone_id = $cgi->param('zone') || 1;
 
 # --- Defaultwerte ---
-my ($title,$artist,$album,$time,$volume,$cover,$progress) = ("","","","","0","","0");
+my ($title, $artist, $album, $time, $volume, $cover, $progress) = ("", "", "", "", "0", "", 0);
+
+# --- Plugin-Konstanten ---
+my $plugin = "lox-audioserver";
 
 # --- Plugin-Konfiguration (wie in index.cgi) ---
-my $plugin = "lox-audioserver";
 my $cfgfile = "$lbpconfigdir/plugins/$lbpplugindir/plugin.cfg";
 my ($serverhost, $serverport);
 if (-e $cfgfile) {
@@ -25,7 +28,12 @@ if (-e $cfgfile) {
         $serverhost = $cfg->param("SERVER.SERVERHOST");
         $serverport = $cfg->param("SERVER.SERVERPORT");
     };
+    if ($@) {
+        warn "Fehler beim Lesen von $cfgfile: $@";
+    }
 }
+
+# Fallbacks
 $serverhost ||= `hostname -I | awk '{print \$1}'`;
 chomp $serverhost;
 $serverport ||= '7090';
@@ -34,7 +42,7 @@ $serverport ||= '7090';
 my $ua = LWP::UserAgent->new(timeout => 6);
 $ua->agent("lox-audioserver-plugin/1.0");
 
-# --- Versuche zuerst status.cgi, fallback auf API ---
+# --- Versuche mehrere Quellen: status.cgi (lokal/plugin), dann API ---
 my $body;
 my $res;
 
@@ -43,6 +51,8 @@ my @try_urls = (
     "http://$serverhost:$serverport/admin/plugins/$lbpplugindir/status.cgi?zone=$zone_id",
     "http://$serverhost:$serverport/admin/api/zones/states",
     "http://$serverhost:$serverport/admin/api/zones",
+    "http://$serverhost:$serverport/api/zones/states",
+    "http://$serverhost:$serverport/api/zones",
 );
 
 foreach my $url (@try_urls) {
@@ -50,8 +60,8 @@ foreach my $url (@try_urls) {
     warn "Tried $url -> " . $res->status_line;
     if ($res->is_success) {
         $body = $res->decoded_content;
-        # If we hit the zones API, we need to extract the single zone object
-        if ($url =~ m{/admin/api/zones}) {
+        # Wenn wir die zones-API bekommen, extrahiere die passende Zone
+        if ($url =~ m{/api/} && $body) {
             my $data = eval { decode_json($body) };
             if ($data && ref $data->{zones} eq 'ARRAY') {
                 foreach my $z (@{ $data->{zones} }) {
@@ -61,14 +71,31 @@ foreach my $url (@try_urls) {
                     }
                 }
             }
+            # Falls zones als HASH geliefert wird
+            if ($data && ref $data->{zones} eq 'HASH') {
+                if (exists $data->{zones}{$zone_id}) {
+                    $body = encode_json($data->{zones}{$zone_id});
+                } else {
+                    foreach my $k (keys %{ $data->{zones} }) {
+                        if ("$k" eq "$zone_id") {
+                            $body = encode_json($data->{zones}{$k});
+                            last;
+                        }
+                    }
+                }
+            }
         }
         last if $body;
+    } else {
+        # Log Body für Debug
+        warn "Body: " . ($res->decoded_content // '');
     }
 }
 
 unless ($body) {
     $title  = "Fehler beim Abruf von status.cgi/API";
     $artist = $res ? $res->status_line : "kein response";
+    $cover  = "/plugins/$lbpplugindir/images/default_cover.png";
 }
 
 # --- JSON parsen und tolerant Feldnamen lesen ---
@@ -76,21 +103,26 @@ if ($body) {
     eval {
         my $data = decode_json($body);
 
+        # Falls $data selbst schon die Zone ist (Hash)
+        if (ref $data ne 'HASH') {
+            die "Unerwartetes JSON-Format";
+        }
+
         # Mögliche Feldnamen abdecken
         $title  = $data->{title} // $data->{trackTitle} // $data->{station} // $title;
         $artist = $data->{artist} // $data->{trackArtist} // $artist;
         $album  = $data->{album} // $data->{trackAlbum} // $album;
         $time   = $data->{time} // $data->{positionMs} // $data->{elapsed} // $time;
-        $volume = $data->{volume} // $data->{level} // $volume;
+        $volume = defined $data->{volume} ? $data->{volume} : ($data->{level} // $volume);
 
-        # coverUrl oder coverurl
+        # coverUrl oder coverurl oder artworkUrl
         my $coverurl = $data->{coverUrl} // $data->{coverurl} // $data->{artworkUrl} // '';
 
-        # Falls API-Objekt mit session enthält, nutze session info
-        if (!$title && $data->{session} && ref $data->{session} eq 'HASH') {
-            $title = $data->{session}{title} // $title;
+        # Falls session vorhanden ist, nutze session-Felder als Fallback
+        if ($data->{session} && ref $data->{session} eq 'HASH') {
+            $title  = $data->{session}{title}  // $title;
             $artist = $data->{session}{artist} // $artist;
-            $time = $data->{session}{elapsed} // $time;
+            $time   = $data->{session}{elapsed} // $time;
         }
 
         # Progress berechnen falls position/duration vorhanden
@@ -105,7 +137,7 @@ if ($body) {
         }
 
         # Cover lokal speichern (nur wenn Bild)
-        my $coverdir = "/opt/loxberry/webfrontend/html/plugins/$lbpplugindir/covers";
+        my $coverdir  = "/opt/loxberry/webfrontend/html/plugins/$lbpplugindir/covers";
         my $coverfile = "$coverdir/zone$zone_id.png";
         my $local_cover = "/plugins/$lbpplugindir/covers/zone$zone_id.png";
 
@@ -138,6 +170,7 @@ if ($body) {
         }
     };
     if ($@) {
+        warn "Fehler beim Parsen der JSON-Antwort: $@";
         $title  = "Fehler beim JSON-Parsing";
         $artist = $@;
         $cover  = "/plugins/$lbpplugindir/images/default_cover.png";
@@ -165,7 +198,7 @@ $templateout->param(
     VOLUME   => $volume,
     COVER    => $cover,
     PROGRESS => $progress,
-    REFRESH  => 10,
+    REFRESH  => 10,   # Sekunden für Meta-Refresh
 );
 
 # --- Ausgabe ---
