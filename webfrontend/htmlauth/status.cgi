@@ -11,7 +11,7 @@ my $plugin  = "lox-audioserver";
 
 print $cgi->header(
     -type => 'application/json',
-    -access_control_allow_origin => '*'   # erlaubt direkten Browser-Zugriff
+    -access_control_allow_origin => '*'
 );
 
 if ($zone_id eq '') {
@@ -19,14 +19,13 @@ if ($zone_id eq '') {
     exit;
 }
 
-# Host/Port des Audioservers
-my $serverhost = `hostname -I | awk '{print \$1}'`;
-chomp $serverhost;
-my $serverport = '7090';
+# Audioserver läuft lokal auf dem LoxBerry
+my $serverhost = "127.0.0.1";
+my $serverport = "7090";
 
-# API abfragen
+# API korrekt abrufen
 my $ua  = LWP::UserAgent->new(timeout => 5);
-my $res = $ua->get("http://$serverhost:$serverport/api/zones/states");
+my $res = $ua->get("http://$serverhost:$serverport/admin/api/zones/states");
 
 if (!$res->is_success) {
     print encode_json({ error => "API nicht erreichbar" });
@@ -35,48 +34,38 @@ if (!$res->is_success) {
 
 my $data = decode_json($res->decoded_content);
 
-# Default-Werte
-my ($title, $artist, $name, $album, $volume, $cover, $state, $mode, $power,
-    $positionMs, $durationMs, $progress, $sourceName, $connected) =
-   ("","","",0,"","","","",0,0,0,"",0);
+# Standardwerte
+my ($title, $artist, $album, $name, $cover, $state, $sourceName, $station) =
+   ("","","","","","","","");
 
 foreach my $zone (@{$data->{zones}}) {
-    next unless $zone->{id} eq $zone_id;
+
+    next unless $zone->{id} == $zone_id;
 
     $title      = $zone->{title}      // '';
-	$name       = $zone->{name}      // '';
     $artist     = $zone->{artist}     // '';
     $album      = $zone->{album}      // '';
-    $volume     = $zone->{volume}     // 0;
-    $cover      = $zone->{coverUrl}   // "/plugins/$plugin/covers/zone$zone_id.png";
+    $name       = $zone->{name}       // '';
     $state      = $zone->{state}      // '';
-    $mode       = $zone->{mode}       // '';
-    $power      = $zone->{power}      // '';
-    $positionMs = $zone->{positionMs} // 0;
-    $durationMs = $zone->{durationMs} // 0;
     $sourceName = $zone->{sourceName} // '';
-    $connected  = $zone->{connected}  // 0;
+    $station    = $zone->{station}    // '';
 
-    $progress = ($durationMs && $positionMs)
-        ? int(($positionMs / $durationMs) * 100)
-        : 0;
+    # Cover-URL korrekt behandeln (beide Varianten)
+    $cover = $zone->{coverUrl}
+          // $zone->{coverurl}
+          // "/plugins/$plugin/templates/images/No-album-art.png";
 
     last;
 }
 
 print encode_json({
-    title      => $title,
-	name       => $name,
-    artist     => $artist,
-    album      => $album,
-    volume     => $volume,
-    cover      => $cover,
-    state      => $state,       # z.B. "playing"
-    mode       => $mode,        # z.B. "play"
-    power      => $power,       # "on"/"off"
-    positionMs => $positionMs,  # Fortschritt in ms
-    durationMs => $durationMs,  # Gesamtlänge in ms
-    progress   => $progress,    # 0–100 %
-    source     => $sourceName,  # z.B. "Spotify"
-    connected  => $connected    # true/false
+    title   => $title,
+    artist  => $artist,
+    album   => $album,
+    name    => $name,
+    station => $station,
+    cover   => $cover,
+    state   => $state,
+    source  => $sourceName,
+    volume  => 0,   # API liefert keinen Wert → Dummy
 });
