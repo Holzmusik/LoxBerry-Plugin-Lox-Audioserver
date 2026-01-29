@@ -58,7 +58,7 @@ body {
 
 .cover {
   width: 100%;
-  max-width: 95vw;   /* mehr Breite im Portrait */
+  max-width: 95vw;
   max-height: 80vh;
   border-radius: 8px;
   margin-bottom: 5vh;
@@ -87,7 +87,8 @@ body {
 }
 .info .title  { font-size: clamp(18px, 4vw, 28px); font-weight: 600; margin-bottom: 1vh; }
 .info .artist { font-size: clamp(16px, 3.5vw, 22px); margin-bottom: 0.5vh; }
-.info .album  { font-size: clamp(14px, 3vw, 20px); }
+.info .album  { font-size: clamp(14px, 3vw, 20px); margin-bottom: 0.5vh; }
+.info .station { font-size: clamp(14px, 3vw, 20px); opacity: 0.8; }
 
 .volume-container {
   width: 90%;
@@ -155,24 +156,20 @@ body {
 /* Landscape Layout */
 @media (orientation: landscape), (min-width: 900px) {
   .container {
-    flex-direction: column;   /* Fix: war Tippfehler */
+    flex-direction: column;
     justify-content: flex-start;
     align-items: center;
     gap: 0;
-  }
-  
-  .zone-header {
-    margin: 0.5em 0; /* enger im Landscape */
   }
   
   .player-body {
     flex-direction: row;
     justify-content: center;
     align-items: flex-end;
-	padding: 0 2vw;
+    padding: 0 2vw;
     gap: 2em;
     width: 100%;
-	margin-top: 1em;
+    margin-top: 1em;
   }
 
   .cover {
@@ -187,11 +184,10 @@ body {
     flex: 1;
     min-width: 300px;
     max-width: 400px;
-	margin-right: auto;
+    margin-right: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-	/margin: 0;
   }
 
   .info {
@@ -210,32 +206,27 @@ body {
 @media (max-width: 480px) {
   .container { padding: 20px 10px; }
   .info .title { font-size: 20px; }
-  .info .artist, .info .album { font-size: 16px; }
+  .info .artist, .info .album, .info .station { font-size: 16px; }
 }
-
-	
   </style>
 </head>
 <body>
   <div class="container" id="container">
 
-    <!-- Zonen-Header -->
     <h2 id="zone-header" class="zone-header"></h2>
 
-    <!-- Player-Body -->
     <div class="player-body">
       
-      <!-- Cover -->
       <img class="cover" id="cover"
            src="/plugins/lox-audioserver/templates/images/No-album-art.png"
            alt="Cover">
 
-      <!-- Rechte Spalte -->
       <div class="right-column">
         <div class="info">
           <div class="title" id="title"></div>
           <div class="artist" id="artist"></div>
           <div class="album" id="album"></div>
+          <div class="station" id="station"></div>
         </div>
 
         <div class="volume-container">
@@ -271,16 +262,14 @@ async function refreshData() {
     }
     const data = await res.json();
 
-    // Titel / Artist / Album
-    document.getElementById("title").textContent  = data.title  || "";
-    document.getElementById("artist").textContent = data.artist || "";
-    document.getElementById("album").textContent  = data.album  || "";
+    document.getElementById("title").textContent   = data.title   || "";
+    document.getElementById("artist").textContent  = data.artist  || "";
+    document.getElementById("album").textContent   = data.album   || "";
+    document.getElementById("station").textContent = data.station || "";
 
-    // Lautstärke
     const vol = data.volume || 0;
     document.getElementById("volume-fill").style.width = vol + "%";
 
-    // Cover
     const coverEl = document.getElementById("cover");
     if (data.cover) {
       coverEl.src = data.cover;
@@ -292,7 +281,6 @@ async function refreshData() {
               .style.setProperty("--bg-cover", "#111");
     }
 
-    // Browser-Titel dynamisch setzen
     if (data.name) {
       document.title = `Player Ansicht – Zone ${zoneId} | ${data.name}`;
       document.getElementById("zone-header").textContent =
@@ -311,7 +299,6 @@ async function refreshData() {
 setInterval(refreshData, 5000);
 refreshData();
 </script>
-
 
 </body>
 </html>
