@@ -18,7 +18,7 @@ fi
 
 # Container aktualisieren
 echo "Ziehe aktuelles Docker-Image ..." >> "$LOGFILE"
-docker pull ghcr.io/rudyberends/lox-audioserver:4.x-branch >> "$LOGFILE" 2>&1
+docker pull ghcr.io/lox-audioserver/lox-audioserver:dev >> "$LOGFILE" 2>&1
 
 # Container neu starten
 if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGIN$"; then
@@ -32,6 +32,6 @@ docker run -d \
   --network host \
   -v "$PLUGINPATH/data:/app/data" \
   -v "$PLUGINPATH/logs:/app/logs" \
-  ghcr.io/rudyberends/lox-audioserver:4.x-branch >> "$LOGFILE" 2>&1
+  ghcr.io/lox-audioserver/lox-audioserver:dev >> "$LOGFILE" 2>&1
 
 echo ">>> postupgrade.sh fertig" >> "$LOGFILE"
