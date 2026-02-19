@@ -35,8 +35,8 @@ if (!$res->is_success) {
 my $data = decode_json($res->decoded_content);
 
 # Standardwerte
-my ($title, $artist, $album, $name, $cover, $state, $sourceName, $station) =
-   ("","","","","","","","");
+my ($title, $artist, $album, $name, $cover, $state, $sourceName, $station, $elapsed, $duration, $startedAt, $updatedAt) =
+   ("","","","","","","","","","","","");
 
 foreach my $zone (@{$data->{zones}}) {
 
@@ -49,6 +49,11 @@ foreach my $zone (@{$data->{zones}}) {
     $state      = $zone->{state}      // '';
     $sourceName = $zone->{sourceName} // '';
     $station    = $zone->{station}    // '';
+    $elapsed    = $zone->{elapsed}    // '';
+    $duration   = $zone->{duration}    // '';
+    $startedAt  = $zone->{startetdAt}    // '';
+    $updatedAt  = $zone->{updatedAt}    // '';
+
 
     # Cover-URL korrekt behandeln (beide Varianten)
     $cover = $zone->{coverUrl}
@@ -59,13 +64,17 @@ foreach my $zone (@{$data->{zones}}) {
 }
 
 print encode_json({
-    title   => $title,
-    artist  => $artist,
-    album   => $album,
-    name    => $name,
-    station => $station,
-    cover   => $cover,
-    state   => $state,
-    source  => $sourceName,
-    volume  => 0,   # API liefert keinen Wert → Dummy
+    title      => $title,
+    artist     => $artist,
+    album      => $album,
+    name       => $name,
+    station    => $station,
+    cover      => $cover,
+    state      => $state,
+    source     => $sourceName,
+    elapsed    => $elapsed,
+    duration   => $duration,
+    startedAt  => $startedAt,
+    updatedAt  => $updatedAt,
+    volume     => 0,   # API liefert keinen Wert → Dummy
 });
