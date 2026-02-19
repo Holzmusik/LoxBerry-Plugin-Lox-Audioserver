@@ -43,12 +43,16 @@ if (!$res->is_success) {
     } else {
 
         # Felder übernehmen
-        $title   = $data->{title}   // "";
-        $artist  = $data->{artist}  // "";
-        $album   = $data->{album}   // "";
-        $name    = $data->{name}    // "";
-        $station = $data->{station} // "";
-        $volume  = $data->{volume}  // 0;
+        $title     = $data->{title}   // "";
+        $artist    = $data->{artist}  // "";
+        $album     = $data->{album}   // "";
+        $name      = $data->{name}    // "";
+        $station   = $data->{station} // "";
+        $elapsed   = $data->{elapsed} // "";
+        $duration  = $data->{duration} // "";
+        $startedAt = $data->{startedAt} // "";
+        $updatedAt = $data->{updatedAt} // "";
+        $volume    = $data->{volume}  // 0;
 
         # Cover-URL
         my $coverurl = $data->{cover} // "";
