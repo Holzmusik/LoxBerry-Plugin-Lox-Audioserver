@@ -18,8 +18,8 @@ my $lbpplugindir = $LoxBerry::System::lbpplugindir;
 my $lbphtmldir   = $LoxBerry::System::lbphtmldir;
 
 # Defaultwerte
-my ($title, $artist, $album, $name, $station, $cover, $volume, $progress) =
-   ("", "", "", "", "", "", 0, 0);
+my ($title, $artist, $album, $name, $station, $elapsed, $duration, $startedAt, $updatedAt, $cover, $volume) =
+   ("", "", "", "", "", 0, 0, 0, 0, "", 0);
 
 # HTTP-Client
 my $ua = LWP::UserAgent->new(timeout => 5);
