@@ -297,6 +297,7 @@ let liveElapsed = 0;
 let liveDuration = 0;
 let liveState = "stop";
 let lastUpdateTs = 0;
+let smoothOffset = 0; // weiche Korrektur
 
 async function refreshData() {
   try {
@@ -345,14 +346,17 @@ async function refreshData() {
       const duration = Number(data.duration) || 0;
 
       // Live-Werte übernehmen
-      liveElapsed = elapsed;
       liveDuration = duration;
       liveState = data.state;
-      lastUpdateTs = Date.now();
 
-      // Prozent
-      const percent = duration > 0 ? (elapsed / duration) * 100 : 0;
-      document.getElementById("progress-fill").style.width = percent + "%";
+      // Weiche Synchronisation:
+      // Differenz zwischen echtem Wert und Live-Wert
+      const diff = elapsed - liveElapsed;
+
+      // Nur sanft angleichen, nicht hart springen
+      smoothOffset = diff;
+
+      lastUpdateTs = Date.now();
 
       // Zeitformat
       const fmt = s => {
@@ -361,12 +365,10 @@ async function refreshData() {
         return `${m}:${sec}`;
       };
 
-      document.getElementById("progress-current").textContent = fmt(elapsed);
       document.getElementById("progress-duration").textContent =
         duration > 0 ? fmt(duration) : "–:–";
 
     } else {
-      // Reset bei Pause oder Fehler
       liveState = "stop";
       document.getElementById("progress-fill").style.width = "0%";
       document.getElementById("progress-current").textContent = "0:00";
@@ -384,7 +386,15 @@ async function refreshData() {
 setInterval(() => {
   if (liveState !== "play") return;
 
-  const diff = Math.floor((Date.now() - lastUpdateTs) / 1000);
+  const now = Date.now();
+  const diff = Math.floor((now - lastUpdateTs) / 1000);
+
+  // Sanfte Korrektur anwenden
+  if (smoothOffset !== 0) {
+    liveElapsed += smoothOffset * 0.25; // 25% pro Sekunde angleichen
+    smoothOffset *= 0.75;               // Rest langsam abbauen
+  }
+
   const current = liveElapsed + diff;
 
   if (liveDuration > 0 && current > liveDuration) return;
@@ -399,8 +409,6 @@ setInterval(() => {
   };
 
   document.getElementById("progress-current").textContent = fmt(current);
-  document.getElementById("progress-duration").textContent =
-    liveDuration > 0 ? fmt(liveDuration) : "–:–";
 
 }, 1000);
 
