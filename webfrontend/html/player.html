@@ -290,6 +290,14 @@ body {
 const urlParams = new URLSearchParams(window.location.search);
 const zoneId = urlParams.get("zone") || 1;
 
+/* -----------------------------------------
+   Live-Ticker Variablen
+----------------------------------------- */
+let liveElapsed = 0;
+let liveDuration = 0;
+let liveState = "stop";
+let lastUpdateTs = 0;
+
 async function refreshData() {
   try {
     const res = await fetch(`/admin/plugins/lox-audioserver/status.cgi?zone=${zoneId}`);
@@ -329,12 +337,18 @@ async function refreshData() {
     }
 
     /* -----------------------------------------
-       Fortschritt aktualisieren
+       Fortschritt aktualisieren (Poll)
        ----------------------------------------- */
     if (data.elapsed !== undefined && data.duration !== undefined) {
 
       const elapsed = Number(data.elapsed) || 0;
       const duration = Number(data.duration) || 0;
+
+      // Live-Werte übernehmen
+      liveElapsed = elapsed;
+      liveDuration = duration;
+      liveState = data.state;
+      lastUpdateTs = Date.now();
 
       // Prozent
       const percent = duration > 0 ? (elapsed / duration) * 100 : 0;
@@ -353,6 +367,7 @@ async function refreshData() {
 
     } else {
       // Reset bei Pause oder Fehler
+      liveState = "stop";
       document.getElementById("progress-fill").style.width = "0%";
       document.getElementById("progress-current").textContent = "0:00";
       document.getElementById("progress-duration").textContent = "–:–";
@@ -363,9 +378,39 @@ async function refreshData() {
   }
 }
 
+/* -----------------------------------------
+   Live-Ticker (jede Sekunde)
+----------------------------------------- */
+setInterval(() => {
+  if (liveState !== "play") return;
+
+  const diff = Math.floor((Date.now() - lastUpdateTs) / 1000);
+  const current = liveElapsed + diff;
+
+  if (liveDuration > 0 && current > liveDuration) return;
+
+  const percent = liveDuration > 0 ? (current / liveDuration) * 100 : 0;
+  document.getElementById("progress-fill").style.width = percent + "%";
+
+  const fmt = s => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60).toString().padStart(2, "0");
+    return `${m}:${sec}`;
+  };
+
+  document.getElementById("progress-current").textContent = fmt(current);
+  document.getElementById("progress-duration").textContent =
+    liveDuration > 0 ? fmt(liveDuration) : "–:–";
+
+}, 1000);
+
+/* -----------------------------------------
+   Poll alle 5 Sekunden
+----------------------------------------- */
 setInterval(refreshData, 5000);
 refreshData();
 </script>
+
 
 
 </body>
