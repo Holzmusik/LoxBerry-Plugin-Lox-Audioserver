@@ -48,10 +48,10 @@ if (!$res->is_success) {
         $album     = $data->{album}   // "";
         $name      = $data->{name}    // "";
         $station   = $data->{station} // "";
-        $elapsed   = $data->{elapsed} // "";
-        $duration  = $data->{duration} // "";
-        $startedAt = $data->{startedAt} // "";
-        $updatedAt = $data->{updatedAt} // "";
+        $elapsed   = $data->{elapsed} // 0;
+        $duration  = $data->{duration} // 0;
+        $startedAt = $data->{startedAt} // 0;
+        $updatedAt = $data->{updatedAt} // 0;
         $volume    = $data->{volume}  // 0;
 
         # Cover-URL
