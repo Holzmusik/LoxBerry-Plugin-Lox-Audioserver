@@ -71,6 +71,9 @@ docker run -d \
   --name $PLUGINNAME \
   --restart=always \
   --network host \
+  --cap-add SYS_ADMIN \
+  --cap-add DAC_READ_SEARCH \
+  --security-opt apparmor=unconfined \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
   "$LOCALIMG"
