@@ -35,8 +35,8 @@ if (!$res->is_success) {
 my $data = decode_json($res->decoded_content);
 
 # Standardwerte
-my ($title, $artist, $album, $name, $cover, $state, $sourceName, $station, $elapsed, $duration, $startedAt, $updatedAt) =
-   ("","","","","","","","","","","","");
+my ($title, $artist, $album, $name, $cover, $state, $sourceName, $station);
+my ($elapsed, $duration, $startedAt, $updatedAt) = (0, 0, 0, 0);
 
 foreach my $zone (@{$data->{zones}}) {
 
@@ -49,13 +49,17 @@ foreach my $zone (@{$data->{zones}}) {
     $state      = $zone->{state}      // '';
     $sourceName = $zone->{sourceName} // '';
     $station    = $zone->{station}    // '';
-    $elapsed    = $zone->{elapsed}    // '';
-    $duration   = $zone->{duration}    // '';
-    $startedAt  = $zone->{startedAt}    // '';
-    $updatedAt  = $zone->{updatedAt}    // '';
 
+    # Fortschritt aus tech.session
+    if ($zone->{tech} && $zone->{tech}->{session}) {
+        my $s = $zone->{tech}->{session};
+        $elapsed   = $s->{elapsed}   // 0;
+        $duration  = $s->{duration}  // 0;
+        $startedAt = $s->{startedAt} // 0;
+        $updatedAt = $s->{updatedAt} // 0;
+    }
 
-    # Cover-URL korrekt behandeln (beide Varianten)
+    # Cover-URL korrekt behandeln
     $cover = $zone->{coverUrl}
           // $zone->{coverurl}
           // "/plugins/$plugin/templates/images/No-album-art.png";
@@ -76,5 +80,5 @@ print encode_json({
     duration   => $duration,
     startedAt  => $startedAt,
     updatedAt  => $updatedAt,
-    volume     => 0,   # API liefert keinen Wert → Dummy
+    volume     => 0,
 });
