@@ -121,6 +121,35 @@ body {
   transition: width 0.3s ease;
   z-index: 2;
 }
+.progress-container { 
+  width: 100%; 
+  display: grid; 
+  grid-template-columns: auto 1fr auto; 
+  align-items: center; 
+  gap: 0.8em; 
+  margin: 1em 0; 
+}
+    
+.progress-bar { 
+  width: 100%; 
+  height: .4em; 
+  background: #2a2a2a; 
+  border-radius: 7px; 
+  position: relative; 
+}
+    
+.progress-fill { 
+  height: 100%; 
+  width: 0%; 
+  background: #eee; 
+  border-radius: 7px; 
+  transition: width 0.3s linear; 
+} 
+    
+.progress-time { 
+  font-size: 0.9em; 
+  opacity: 0.8; 
+}
 
 .zone-header {
   text-align: center;
@@ -229,6 +258,15 @@ body {
           <div class="station" id="station"></div>
         </div>
 
+        <!-- Fortschrittsbalken --> 
+        <div class="progress-container"> 
+          <div class="progress-time" id="progress-current">0:00</div> 
+          <div class="progress-bar"> 
+            <div class="progress-fill" id="progress-fill"></div> 
+          </div> 
+          <div class="progress-time" id="progress-duration">–:–</div> 
+        </div>
+
         <div class="volume-container">
           <svg class="volume-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <path d="M3 9v6h4l5 5V4L7 9H3z"/>
@@ -247,7 +285,6 @@ body {
       </div>
     </div>
   </div>
-
 
 <script>
 const urlParams = new URLSearchParams(window.location.search);
@@ -291,6 +328,36 @@ async function refreshData() {
         `Zone ${zoneId}`;
     }
 
+    /* -----------------------------------------
+       Fortschritt aktualisieren
+       ----------------------------------------- */
+    if (data.elapsed !== undefined && data.duration !== undefined) {
+
+      const elapsed = Number(data.elapsed) || 0;
+      const duration = Number(data.duration) || 0;
+
+      // Prozent
+      const percent = duration > 0 ? (elapsed / duration) * 100 : 0;
+      document.getElementById("progress-fill").style.width = percent + "%";
+
+      // Zeitformat
+      const fmt = s => {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60).toString().padStart(2, "0");
+        return `${m}:${sec}`;
+      };
+
+      document.getElementById("progress-current").textContent = fmt(elapsed);
+      document.getElementById("progress-duration").textContent =
+        duration > 0 ? fmt(duration) : "–:–";
+
+    } else {
+      // Reset bei Pause oder Fehler
+      document.getElementById("progress-fill").style.width = "0%";
+      document.getElementById("progress-current").textContent = "0:00";
+      document.getElementById("progress-duration").textContent = "–:–";
+    }
+
   } catch (e) {
     console.warn("Fehler beim Refresh:", e);
   }
@@ -299,6 +366,7 @@ async function refreshData() {
 setInterval(refreshData, 5000);
 refreshData();
 </script>
+
 
 </body>
 </html>
