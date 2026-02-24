@@ -51,7 +51,7 @@ foreach my $zone (@{$data->{zones}}) {
     $station    = $zone->{station}    // '';
     $elapsed    = $zone->{elapsed}    // '';
     $duration   = $zone->{duration}    // '';
-    $startedAt  = $zone->{startetdAt}    // '';
+    $startedAt  = $zone->{startedAt}    // '';
     $updatedAt  = $zone->{updatedAt}    // '';
 
 
