@@ -25,7 +25,7 @@ my $serverport = "7090";
 
 # API korrekt abrufen
 my $ua  = LWP::UserAgent->new(timeout => 5);
-my $res = $ua->get("http://$serverhost:$serverport/admin/api/zones/states");
+my $res = $ua->get("http://$serverhost:$serverport/api/zones/states");
 
 if (!$res->is_success) {
     print encode_json({ error => "API nicht erreichbar" });
