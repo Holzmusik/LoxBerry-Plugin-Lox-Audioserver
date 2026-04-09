@@ -4,6 +4,7 @@ use warnings;
 use CGI;
 use JSON;
 use LWP::UserAgent;
+use HTTP::Cookies;
 
 my $cgi     = CGI->new;
 my $zone_id = $cgi->param('zone') // '';
@@ -23,12 +24,38 @@ if ($zone_id eq '') {
 my $serverhost = "127.0.0.1";
 my $serverport = "7090";
 
-# API korrekt abrufen
-my $ua  = LWP::UserAgent->new(timeout => 5);
-my $res = $ua->get("http://$serverhost:$serverport/api/zones/states");
+# Login-Daten
+my $username = "Setup";
+my $password = "Saschasmtf8";
+
+# Cookie-Handling
+my $cookies = HTTP::Cookies->new();
+
+my $ua = LWP::UserAgent->new(
+    timeout    => 5,
+    cookie_jar => $cookies
+);
+
+# 1️⃣ Login durchführen
+my $login_res = $ua->post(
+    "http://$serverhost:$serverport/admin/api/auth/login",
+    'Content-Type' => 'application/json',
+    Content        => encode_json({
+        username => $username,
+        password => $password
+    })
+);
+
+if (!$login_res->is_success) {
+    print encode_json({ error => "Login fehlgeschlagen" });
+    exit;
+}
+
+# 2️⃣ Geschützte Admin-API abrufen
+my $res = $ua->get("http://$serverhost:$serverport/admin/api/zones/states");
 
 if (!$res->is_success) {
-    print encode_json({ error => "API nicht erreichbar" });
+    print encode_json({ error => "Admin-API nicht erreichbar" });
     exit;
 }
 
