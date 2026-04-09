@@ -5,6 +5,7 @@ use CGI;
 use JSON;
 use LWP::UserAgent;
 use HTTP::Cookies;
+use LoxBerry::IO;   # <--- MQTT für LoxBerry
 
 my $cgi     = CGI->new;
 my $zone_id = $cgi->param('zone') // '';
@@ -24,7 +25,7 @@ if ($zone_id eq '') {
 my $serverhost = "127.0.0.1";
 my $serverport = "7090";
 
-# Login-Daten
+# Login-Daten (später konfigurierbar machen)
 my $username = "Setup";
 my $password = "Saschasmtf8";
 
@@ -94,6 +95,25 @@ foreach my $zone (@{$data->{zones}}) {
     last;
 }
 
+# 3️⃣ MQTT-PUSH (NEU)
+my $mqtt = LoxBerry::IO::mqtt_connect();
+my $topic = "lox/audioserver/$zone_id";
+
+$mqtt->publish("$topic/title",   $title);
+$mqtt->publish("$topic/artist",  $artist);
+$mqtt->publish("$topic/album",   $album);
+$mqtt->publish("$topic/name",    $name);
+$mqtt->publish("$topic/station", $station);
+$mqtt->publish("$topic/state",   $state);
+$mqtt->publish("$topic/cover",   $cover);
+$mqtt->publish("$topic/elapsed", $elapsed);
+$mqtt->publish("$topic/duration",$duration);
+$mqtt->publish("$topic/startedAt",$startedAt);
+$mqtt->publish("$topic/updatedAt",$updatedAt);
+
+$mqtt->disconnect();
+
+# 4️⃣ JSON-Ausgabe wie bisher
 print encode_json({
     title      => $title,
     artist     => $artist,
