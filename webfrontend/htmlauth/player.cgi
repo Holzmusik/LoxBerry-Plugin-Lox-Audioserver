@@ -107,7 +107,6 @@ $templateout->param(
     STATION  => $station,
     COVER    => $cover,
     VOLUME   => $volume,
-    PROGRESS => $progress,
     REFRESH  => 10,
 );
 
