@@ -8,6 +8,8 @@ use HTML::Template;
 use JSON;
 use File::Path qw(make_path);
 use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
+use Image::Magick;
+
 
 # CGI initialisieren
 my $cgi     = CGI->new;
@@ -62,27 +64,48 @@ if (!$res->is_success) {
         my $coverfile = "$coverdir/zone$zone_id.png";
         my $local_cover = "/plugins/$lbpplugindir/covers/zone$zone_id.png";
 
-        if ($coverurl) {
-            make_path($coverdir) unless -d $coverdir;
+       if ($coverurl) {
+           make_path($coverdir) unless -d $coverdir;
 
-            my $imgres = $ua->get($coverurl);
-            if ($imgres->is_success && ($imgres->header('Content-Type') // '') =~ /^image/) {
-                if (open my $fh, '>', $coverfile) {
-                    binmode $fh;
-                    print $fh $imgres->content;
-                    close $fh;
-                    chmod 0644, $coverfile;
-                    $cover = $local_cover;
-                } else {
-                    warn "Cover konnte nicht gespeichert werden: $!";
-                    $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-                }
-            } else {
-                $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-            }
-        } else {
-            $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-        }
+           my $imgres = $ua->get($coverurl);
+
+           if ($imgres->is_success && ($imgres->header('Content-Type') // '') =~ /^image/) {
+
+               my $blob = $imgres->content;
+
+               # Image::Magick Objekt
+               my $img = Image::Magick->new;
+
+               # Bild aus dem Blob laden
+               my $err = $img->BlobToImage($blob);
+               if ($err) {
+                   warn "Fehler beim Laden des Coverbildes: $err";
+                   $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+               } else {
+
+                   # Immer als PNG speichern
+                   my $err2 = $img->Write(
+                       filename    => $coverfile,
+                       compression => 'Zip'
+                   );
+
+                   if ($err2) {
+                       warn "Fehler beim Speichern des PNG-Covers: $err2";
+                       $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+                   } else {
+                       chmod 0644, $coverfile;
+                       $cover = $local_cover;
+                   }
+              }
+    
+           } else {
+               $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+           }
+
+       } else {
+           $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+       }
+
     }
 }
 
