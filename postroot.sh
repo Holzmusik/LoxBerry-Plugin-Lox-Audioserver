@@ -59,15 +59,15 @@ max_offline=20
 while true; do
     STATUS=$(curl -s "$STATUS_BASE$zone")
 
-    # Prüfen, ob JSON gültig ist
+    # JSON gültig?
     echo "$STATUS" | jq . >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         offline_count=$((offline_count+1))
     else
-        # Prüfen, ob Zone ein Cover hat (Zone existiert)
-        HAS_COVER=$(echo "$STATUS" | jq -r '.cover // empty')
+        # Zone existiert nur, wenn .name nicht null ist
+        ZONE_NAME=$(echo "$STATUS" | jq -r '.name')
 
-        if [ -z "$HAS_COVER" ]; then
+        if [ "$ZONE_NAME" == "null" ] || [ -z "$ZONE_NAME" ]; then
             offline_count=$((offline_count+1))
         else
             # Zone existiert → Cover aktualisieren
@@ -76,7 +76,7 @@ while true; do
         fi
     fi
 
-    # Wenn zu viele Offline-Zonen → abbrechen
+    # Abbruch nach X Offline-Zonen
     if [ $offline_count -ge $max_offline ]; then
         break
     fi
