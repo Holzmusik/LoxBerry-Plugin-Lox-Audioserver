@@ -41,7 +41,7 @@ else
     echo "WARNUNG: Konnte ImageMagick nicht installieren – Paketmanager unbekannt."
 fi
 
-echo "Erstelle dynamisches Cover-Update-Script ..."
+echo "Erstelle kombiniertes Cover+MQTT-Update-Script ..."
 
 UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
@@ -52,16 +52,19 @@ PLUGIN=lox-audioserver
 STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
 
-# Maximale Anzahl Zonen, die geprüft werden sollen
+# Maximale Anzahl Zonen
 MAX_ZONES=50
 
 # 20 parallele Worker
 seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
+    # Status abfragen → triggert MQTT
     STATUS=$(curl -s "'"$STATUS_BASE"'"{} )
-    NAME=$(echo "$STATUS" | jq -r ".name // empty")
 
     # Zone existiert nur, wenn .name ein nicht-leerer String ist
+    NAME=$(echo "$STATUS" | jq -r ".name // empty")
+
     if [ -n "$NAME" ]; then
+        # Cover aktualisieren
         curl -s "'"$PLAYER_BASE"'"{} >/dev/null
     fi
 '
@@ -69,6 +72,7 @@ EOF
 
 chmod +x $UPDATESCRIPT
 chown loxberry:loxberry $UPDATESCRIPT
+
 
 
 
