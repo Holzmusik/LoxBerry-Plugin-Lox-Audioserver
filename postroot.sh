@@ -41,6 +41,73 @@ else
     echo "WARNUNG: Konnte ImageMagick nicht installieren – Paketmanager unbekannt."
 fi
 
+echo "Erstelle dynamisches Cover-Update-Script ..."
+
+UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
+
+cat << 'EOF' > $UPDATESCRIPT
+#!/bin/bash
+
+PLUGIN=lox-audioserver
+STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
+PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
+
+zone=1
+
+while true; do
+    STATUS=$(curl -s "$STATUS_BASE$zone")
+
+    # Prüfen, ob gültiges JSON zurückkommt
+    echo "$STATUS" | jq . >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        break
+    fi
+
+    # Player-CGI triggern, damit PNG aktualisiert wird
+    curl -s "$PLAYER_BASE$zone" >/dev/null
+
+    zone=$((zone+1))
+done
+EOF
+
+chmod +x $UPDATESCRIPT
+chown loxberry:loxberry $UPDATESCRIPT
+
+
+echo "Erstelle systemd Service für Cover-Updates ..."
+
+SERVICE_FILE="/etc/systemd/system/lox-audioserver-cover.service"
+
+cat << 'EOF' > $SERVICE_FILE
+[Unit]
+Description=Lox-Audioserver Cover Update Service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/loxberry/bin/plugins/lox-audioserver/update_covers.sh
+EOF
+
+echo "Erstelle systemd Timer für Cover-Updates ..."
+
+TIMER_FILE="/etc/systemd/system/lox-audioserver-cover.timer"
+
+cat << 'EOF' > $TIMER_FILE
+[Unit]
+Description=Run Lox-Audioserver Cover Update every second
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=1
+AccuracySec=1ms
+
+[Install]
+WantedBy=timers.target
+EOF
+
+systemctl daemon-reload
+systemctl enable lox-audioserver-cover.timer
+systemctl start lox-audioserver-cover.timer
+
 
 # In Plugin-Verzeichnis wechseln
 cd "$APPDIR" || exit 1
