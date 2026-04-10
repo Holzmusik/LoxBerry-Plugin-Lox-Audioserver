@@ -7,7 +7,8 @@ PLUGINNAME=lox-audioserver
 LBHOMEDIR=/opt/loxberry
 APPDIR=$LBHOMEDIR/bin/plugins/$PLUGINNAME
 WEBDIR=$LBHOMEDIR/webfrontend/html/plugins/$PLUGINNAME
-GITURL="https://github.com/lox-audioserver/lox-audioserver.git"
+# GITURL="https://github.com/lox-audioserver/lox-audioserver.git"
+GITURL="https://github.com/mr-manuel/Loxone_lox-audioserver.git"
 GITBRANCH="dev"
 LOCALIMG="lox-audioserver:beta-local"
 
