@@ -64,10 +64,11 @@ while true; do
     if [ $? -ne 0 ]; then
         offline_count=$((offline_count+1))
     else
-        # Zone existiert nur, wenn .name nicht null ist
-        ZONE_NAME=$(echo "$STATUS" | jq -r '.name')
+        # Zone existiert nur, wenn .name ein nicht-leerer String ist
+        ZONE_NAME=$(echo "$STATUS" | jq -r '.name // empty')
 
-        if [ "$ZONE_NAME" == "null" ] || [ -z "$ZONE_NAME" ]; then
+        if [ -z "$ZONE_NAME" ]; then
+            # Zone existiert NICHT
             offline_count=$((offline_count+1))
         else
             # Zone existiert → Cover aktualisieren
@@ -83,6 +84,7 @@ while true; do
 
     zone=$((zone+1))
 done
+
 EOF
 
 chmod +x $UPDATESCRIPT
