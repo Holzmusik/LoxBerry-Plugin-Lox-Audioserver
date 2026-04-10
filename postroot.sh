@@ -53,19 +53,33 @@ STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
 
 zone=1
+offline_count=0
+max_offline=20
 
 while true; do
     STATUS=$(curl -s "$STATUS_BASE$zone")
 
-    # Prüfen, ob gültiges JSON zurückkommt
-    HAS_COVER=$(echo "$STATUS" | jq -r '.cover // empty')
+    # Prüfen, ob JSON gültig ist
+    echo "$STATUS" | jq . >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        offline_count=$((offline_count+1))
+    else
+        # Prüfen, ob Zone ein Cover hat (Zone existiert)
+        HAS_COVER=$(echo "$STATUS" | jq -r '.cover // empty')
 
-    if [ -z "$HAS_COVER" ]; then
-        break
+        if [ -z "$HAS_COVER" ]; then
+            offline_count=$((offline_count+1))
+        else
+            # Zone existiert → Cover aktualisieren
+            curl -s "$PLAYER_BASE$zone" >/dev/null
+            offline_count=0
+        fi
     fi
 
-    # Player-CGI triggern, damit PNG aktualisiert wird
-    curl -s "$PLAYER_BASE$zone" >/dev/null
+    # Wenn zu viele Offline-Zonen → abbrechen
+    if [ $offline_count -ge $max_offline ]; then
+        break
+    fi
 
     zone=$((zone+1))
 done
