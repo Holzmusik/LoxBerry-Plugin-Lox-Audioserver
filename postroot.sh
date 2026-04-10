@@ -31,6 +31,17 @@ if ! command -v docker >/dev/null 2>&1; then
     fi
 fi
 
+echo "Installiere ImageMagick und Perl-Bindings ..."
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    apt-get install -y imagemagick libimage-magick-perl
+elif command -v yum >/dev/null 2>&1; then
+    yum install -y ImageMagick perl-Image-Magick
+else
+    echo "WARNUNG: Konnte ImageMagick nicht installieren – Paketmanager unbekannt."
+fi
+
+
 # In Plugin-Verzeichnis wechseln
 cd "$APPDIR" || exit 1
 
