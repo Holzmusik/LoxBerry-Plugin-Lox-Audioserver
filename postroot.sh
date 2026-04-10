@@ -52,22 +52,28 @@ PLUGIN=lox-audioserver
 STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
 
-# Maximale Anzahl Zonen
 MAX_ZONES=50
 
-# 20 parallele Worker
-seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
-    # Status abfragen → triggert MQTT
+# Alle Zonen parallel abfragen und nur echte Zonen behalten
+REAL_ZONES=$(seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
     STATUS=$(curl -s "'"$STATUS_BASE"'"{} )
-
-    # Zone existiert nur, wenn .name ein nicht-leerer String ist
     NAME=$(echo "$STATUS" | jq -r ".name // empty")
 
     if [ -n "$NAME" ]; then
-        # Cover aktualisieren
-        curl -s "'"$PLAYER_BASE"'"{} >/dev/null
+        echo {}
     fi
-'
+')
+
+# Jetzt alle echten Zonen verarbeiten
+for Z in $REAL_ZONES; do
+    # MQTT wird automatisch durch status.cgi ausgelöst
+    curl -s "$STATUS_BASE$Z" >/dev/null
+
+    # Cover aktualisieren
+    curl -s "$PLAYER_BASE$Z" >/dev/null
+done
+
+
 EOF
 
 chmod +x $UPDATESCRIPT
