@@ -58,8 +58,9 @@ while true; do
     STATUS=$(curl -s "$STATUS_BASE$zone")
 
     # Prüfen, ob gültiges JSON zurückkommt
-    echo "$STATUS" | jq . >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
+    HAS_COVER=$(echo "$STATUS" | jq -r '.cover // empty')
+
+    if [ -z "$HAS_COVER" ]; then
         break
     fi
 
