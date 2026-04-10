@@ -52,43 +52,24 @@ PLUGIN=lox-audioserver
 STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
 
-zone=1
-offline_count=0
-max_offline=20
+# Maximale Anzahl Zonen, die geprüft werden sollen
+MAX_ZONES=50
 
-while true; do
-    STATUS=$(curl -s "$STATUS_BASE$zone")
+# 20 parallele Worker
+seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
+    STATUS=$(curl -s "'"$STATUS_BASE"'"{} )
+    NAME=$(echo "$STATUS" | jq -r ".name // empty")
 
-    # JSON gültig?
-    echo "$STATUS" | jq . >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        offline_count=$((offline_count+1))
-    else
-        # Zone existiert nur, wenn .name ein nicht-leerer String ist
-        ZONE_NAME=$(echo "$STATUS" | jq -r '.name // empty')
-
-        if [ -z "$ZONE_NAME" ]; then
-            # Zone existiert NICHT
-            offline_count=$((offline_count+1))
-        else
-            # Zone existiert → Cover aktualisieren
-            curl -s "$PLAYER_BASE$zone" >/dev/null
-            offline_count=0
-        fi
+    # Zone existiert nur, wenn .name ein nicht-leerer String ist
+    if [ -n "$NAME" ]; then
+        curl -s "'"$PLAYER_BASE"'"{} >/dev/null
     fi
-
-    # Abbruch nach X Offline-Zonen
-    if [ $offline_count -ge $max_offline ]; then
-        break
-    fi
-
-    zone=$((zone+1))
-done
-
+'
 EOF
 
 chmod +x $UPDATESCRIPT
 chown loxberry:loxberry $UPDATESCRIPT
+
 
 
 echo "Erstelle systemd Service für Cover-Updates ..."
