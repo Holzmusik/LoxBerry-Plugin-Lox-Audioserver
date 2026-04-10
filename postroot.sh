@@ -48,6 +48,8 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
 
+set -euo pipefail
+
 PLUGIN=lox-audioserver
 STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
