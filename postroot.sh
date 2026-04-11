@@ -54,7 +54,7 @@ PLUGIN=lox-audioserver
 STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
 
-MAX_ZONES=50
+MAX_ZONES=10
 
 # Alle Zonen parallel abfragen und nur echte Zonen behalten
 REAL_ZONES=$(seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
@@ -107,7 +107,7 @@ Description=Run Lox-Audioserver Cover Update every second
 
 [Timer]
 OnBootSec=5
-OnUnitActiveSec=1
+OnUnitActiveSec=5
 AccuracySec=1ms
 
 [Install]
