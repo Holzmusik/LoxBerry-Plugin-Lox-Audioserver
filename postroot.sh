@@ -47,33 +47,77 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
+# Optimiertes Cover- und MQTT-Update für Lox-Audioserver
+# Sascha Edition – schnell, sauber, robust
 
 set -euo pipefail
 
-PLUGIN=lox-audioserver
-STATUS_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
-PLAYER_BASE="http://127.0.0.1/admin/plugins/$PLUGIN/player.cgi?zone="
+PLUGIN="lox-audioserver"
+BASE_URL="http://127.0.0.1/admin/plugins/$PLUGIN"
+STATUS_URL="$BASE_URL/status.cgi?zone="
+PLAYER_URL="$BASE_URL/player.cgi?zone="
 
 MAX_ZONES=10
+PARALLEL_JOBS=10
 
-# Alle Zonen parallel abfragen und nur echte Zonen behalten
-REAL_ZONES=$(seq 1 $MAX_ZONES | xargs -n1 -P20 -I{} sh -c '
-    STATUS=$(curl -s "'"$STATUS_BASE"'"{} )
-    NAME=$(echo "$STATUS" | jq -r ".name // empty")
+# --- 1. Echte Zonen erkennen -------------------------------------------------
 
-    if [ -n "$NAME" ]; then
-        echo {}
-    fi
+REAL_ZONES=$(seq 1 $MAX_ZONES | xargs -n1 -P$PARALLEL_JOBS -I{} sh -c '
+    JSON=$(curl -s "'"$STATUS_URL"'"{} )
+    NAME=$(echo "$JSON" | jq -r ".name // empty")
+    if [ -n "$NAME" ]; then echo {}; fi
 ')
 
-# Jetzt alle echten Zonen verarbeiten
-for Z in $REAL_ZONES; do
-    # MQTT wird automatisch durch status.cgi ausgelöst
-    curl -s "$STATUS_BASE$Z" >/dev/null
+# Keine Zonen → nichts tun
+[ -z "$REAL_ZONES" ] && exit 0
 
-    # Cover aktualisieren
-    curl -s "$PLAYER_BASE$Z" >/dev/null
-done
+
+# --- 2. MQTT + Cover-Update parallel -----------------------------------------
+
+update_zone() {
+    Z=$1
+
+    # MQTT triggern (status.cgi erzeugt MQTT)
+    curl -s "$STATUS_URL$Z" >/dev/null
+
+    # Cover aktualisieren (player.cgi erzeugt PNG)
+    # --- PNG-Delta-Update -------------------------------------------------------
+
+COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
+mkdir -p "$COVERDIR"
+
+TMPFILE="/tmp/cover_zone${Z}_new.png"
+FINALFILE="$COVERDIR/zone${Z}.png"
+
+# Neues Cover vom Player holen (liefert PNG)
+curl -s "$PLAYER_URL$Z" -o "$TMPFILE"
+
+# Wenn kein altes Cover existiert → direkt übernehmen
+if [ ! -f "$FINALFILE" ]; then
+    mv "$TMPFILE" "$FINALFILE"
+    chmod 644 "$FINALFILE"
+    exit 0
+fi
+
+# Hashes vergleichen
+OLDHASH=$(sha256sum "$FINALFILE" | awk '{print $1}')
+NEWHASH=$(sha256sum "$TMPFILE" | awk '{print $1}')
+
+# Wenn gleich → nichts tun
+if [ "$OLDHASH" = "$NEWHASH" ]; then
+    rm "$TMPFILE"
+else
+    mv "$TMPFILE" "$FINALFILE"
+    chmod 644 "$FINALFILE"
+fi
+
+}
+
+export -f update_zone
+export STATUS_URL PLAYER_URL
+
+echo "$REAL_ZONES" | xargs -n1 -P$PARALLEL_JOBS bash -c 'update_zone "$@"' _
+
 
 
 EOF
@@ -94,6 +138,8 @@ Description=Lox-Audioserver Cover Update Service
 
 [Service]
 Type=oneshot
+User=loxberry
+Group=loxberry
 ExecStart=/opt/loxberry/bin/plugins/lox-audioserver/update_covers.sh
 EOF
 
@@ -108,7 +154,7 @@ Description=Run Lox-Audioserver Cover Update every second
 [Timer]
 OnBootSec=5
 OnUnitActiveSec=5
-AccuracySec=1ms
+AccuracySec=100ms
 
 [Install]
 WantedBy=timers.target
