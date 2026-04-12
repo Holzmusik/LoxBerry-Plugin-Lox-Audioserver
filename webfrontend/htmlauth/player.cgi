@@ -84,10 +84,22 @@ if (!$res->is_success) {
                } else {
 
                    # Immer als PNG speichern
-                   my $err2 = $img->Write(
-                       filename    => $coverfile,
-                       compression => 'Zip'
-                   );
+               # Immer als PNG speichern
+               $img->Set(magick => 'PNG');   # <-- Format explizit setzen
+
+               my $err2 = $img->Write(
+                  filename    => $coverfile,
+                  compression => 'Zip'
+               );
+
+               if ($err2) {
+                    warn "Fehler beim Speichern des PNG-Covers: $err2";
+                    $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+               } else {
+                   chmod 0644, $coverfile;
+                   $cover = $local_cover;
+               }
+
 
                    if ($err2) {
                        warn "Fehler beim Speichern des PNG-Covers: $err2";
