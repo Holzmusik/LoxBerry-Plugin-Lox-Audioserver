@@ -150,7 +150,7 @@ update_zone() {
     fi
 
     # JPG -> PNG konvertieren (immer in TMP)
-    convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
+    convert "$TMP_JPG" -resize 480x480 "$TMP_PNG"
 
     # PNG-Delta: nur schreiben, wenn sich das PNG wirklich geändert hat
     if [ -f "$FINAL_PNG" ]; then
