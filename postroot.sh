@@ -101,13 +101,14 @@ cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
 # Ultra-schnelles Cover- und MQTT-Update über die offizielle AudioServer API
 # Keine status.cgi, kein Perl-CGI, minimale CPU-Last
+
+set -euo pipefail
+
+# --- LoxBerry-Umgebung für systemd sicherstellen ---
 export LBHOMEDIR=/opt/loxberry
 export PERL5LIB=/opt/loxberry/libs/perllib
 export HOME=/opt/loxberry
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-
-
-set -euo pipefail
 
 PLUGIN="lox-audioserver"
 AS_IP="localhost"
@@ -117,7 +118,7 @@ COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
 mkdir -p "$COVERDIR"
 
 LOCKFILE="/var/lock/lox-audioserver-cover.lock"
-exec 200>$LOCKFILE
+exec 200>"$LOCKFILE"
 flock -n 200 || exit 0
 
 # --- Auto-Zonenerkennung ---
@@ -148,18 +149,23 @@ update_zone() {
         return
     fi
 
-    NEW_HASH=$(sha256sum "$TMP_JPG" | awk '{print $1}')
+    # JPG -> PNG konvertieren (immer in TMP)
+    convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
 
+    # PNG-Delta: nur schreiben, wenn sich das PNG wirklich geändert hat
     if [ -f "$FINAL_PNG" ]; then
+        NEW_HASH=$(sha256sum "$TMP_PNG" | awk '{print $1}')
         OLD_HASH=$(sha256sum "$FINAL_PNG" | awk '{print $1}')
     else
-        OLD_HASH=""
+        NEW_HASH="x"
+        OLD_HASH="y"
     fi
 
     if [ "$NEW_HASH" != "$OLD_HASH" ]; then
-        convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
         mv "$TMP_PNG" "$FINAL_PNG"
         chmod 644 "$FINAL_PNG"
+    else
+        rm -f "$TMP_PNG"
     fi
 
     rm -f "$TMP_JPG"
@@ -205,6 +211,7 @@ update_zone() {
 for Z in $ZONES; do
     update_zone "$Z"
 done
+
 
 EOF
 
