@@ -310,20 +310,35 @@ if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGINNAME$"; then
     docker rm -f $PLUGINNAME
 fi
 
-echo "Starte offiziellen Lox-Audioserver Container (testing) ..."
+# Repository klonen oder aktualisieren
+if [ ! -d "$APPDIR/repo" ]; then
+    echo "Klonen des beta-branch ..."
+    git clone --branch "$GITBRANCH" "$GITURL" "$APPDIR/repo"
+else   
+   echo "Aktualisiere bestehendes Repository ..."
+   cd "$APPDIR/repo"
+   git fetch
+   git reset --hard origin/$GITBRANCH
+fi
 
-# Offizielles Image ziehen
-docker pull ghcr.io/lox-audioserver/lox-audioserver:testing
+# Docker-Image lokal bauen
+echo "Baue lokales Docker-Image $LOCALIMG ..."
+cd "$APPDIR/repo"
+docker build -t "$LOCALIMG" .
 
-# Container starten
+# Container starten mit den Pfaden aus dem Repo
+echo "Starte neuen Container $PLUGINNAME ..."
 docker run -d \
   --name $PLUGINNAME \
   --restart=always \
   --network host \
+  --cap-add SYS_ADMIN \
+  --cap-add DAC_READ_SEARCH \
+  --security-opt apparmor=unconfined \
   -e TZ=Europe/Berlin \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
-  ghcr.io/lox-audioserver/lox-audioserver:testing
+  "$LOCALIMG"
 
 
 # CGI-Skripte Rechte setzen (Proxy & Index)
