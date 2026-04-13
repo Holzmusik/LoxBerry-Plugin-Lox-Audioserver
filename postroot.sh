@@ -119,9 +119,8 @@ update_zone() {
 
 # Alle Zonen parallel aktualisieren
 for Z in $(seq 1 $MAX_ZONES); do
-    update_zone "$Z" &
+    update_zone "$Z" 
 done
-wait
 
 EOF
 
@@ -158,7 +157,7 @@ Description=Run Lox-Audioserver Cover Update every second
 
 [Timer]
 OnBootSec=5
-OnUnitActiveSec=2
+OnUnitActiveSec=5
 AccuracySec=100ms
 
 [Install]
