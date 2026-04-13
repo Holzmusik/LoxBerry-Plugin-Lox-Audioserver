@@ -48,7 +48,7 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
 # Finales Cover-Update für Lox-Audioserver (CM5-kompatibel)
-# Holt Cover direkt aus status.cgi, konvertiert nach PNG und speichert zuverlässig.
+# Holt Cover direkt aus status.cgi, macht Delta-Update und speichert PNG atomar.
 
 set -euo pipefail
 
@@ -76,24 +76,45 @@ update_zone() {
     COVERURL=$(echo "$JSON" | jq -r '.cover // empty')
     [ -z "$COVERURL" ] && return
 
-    TMP="/tmp/cover_${Z}_orig"
-    FINAL="$COVERDIR/zone${Z}.png"
+    # Temp-Dateien im RAM
+    TMP_JPG="/dev/shm/cover_${Z}.jpg"
+    TMP_PNG="/dev/shm/cover_${Z}.png"
+    FINAL_PNG="$COVERDIR/zone${Z}.png"
 
-    # Originalbild laden
-    curl -s "$COVERURL" -o "$TMP" || return
+    # Cover herunterladen
+    curl -s -o "$TMP_JPG" "$COVERURL" || return
+    [ ! -s "$TMP_JPG" ] && return
 
     # Prüfen, ob es ein Bild ist
-    if ! file "$TMP" | grep -qE 'image|bitmap'; then
-        rm -f "$TMP"
+    if ! file "$TMP_JPG" | grep -qE 'image|bitmap'; then
+        rm -f "$TMP_JPG"
         return
     fi
 
-    # PNG konvertieren (egal welches Quellformat)
-    convert "$TMP" PNG:"$FINAL"
+    # Hash des neuen Covers
+    NEW_HASH=$(sha256sum "$TMP_JPG" | awk '{print $1}')
 
-    chmod 644 "$FINAL"
-    touch "$FINAL"
-    rm -f "$TMP"
+    # Hash des bestehenden PNG (falls vorhanden)
+    if [ -f "$FINAL_PNG" ]; then
+        OLD_HASH=$(sha256sum "$FINAL_PNG" | awk '{print $1}')
+    else
+        OLD_HASH=""
+    fi
+
+    # Delta-Update: Nur neu rendern, wenn sich das Cover geändert hat
+    if [ "$NEW_HASH" = "$OLD_HASH" ]; then
+        rm -f "$TMP_JPG"
+        return
+    fi
+
+    # PNG neu rendern
+    convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
+
+    # Atomar ersetzen
+    mv "$TMP_PNG" "$FINAL_PNG"
+    chmod 644 "$FINAL_PNG"
+
+    rm -f "$TMP_JPG"
 }
 
 # Alle Zonen parallel aktualisieren
@@ -102,8 +123,8 @@ for Z in $(seq 1 $MAX_ZONES); do
 done
 wait
 
-
 EOF
+
 
 chmod +x $UPDATESCRIPT
 chown loxberry:loxberry $UPDATESCRIPT
@@ -137,7 +158,7 @@ Description=Run Lox-Audioserver Cover Update every second
 
 [Timer]
 OnBootSec=5
-OnUnitActiveSec=5
+OnUnitActiveSec=2
 AccuracySec=100ms
 
 [Install]
