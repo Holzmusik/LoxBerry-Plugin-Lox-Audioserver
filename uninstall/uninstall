@@ -1,0 +1,62 @@
+#!/bin/bash
+# uninstall – Entfernt alle zusätzlichen Dateien und systemweiten Komponenten
+
+set -euo pipefail
+
+PLUGIN="lox-audioserver"
+LBHOMEDIR="/opt/loxberry"
+APPDIR="$LBHOMEDIR/bin/plugins/$PLUGIN"
+WEBDIR="$LBHOMEDIR/webfrontend/html/plugins/$PLUGIN"
+AUTHDIR="$LBHOMEDIR/webfrontend/htmlauth/$PLUGIN"
+
+SERVICE="/etc/systemd/system/lox-audioserver-cover.service"
+TIMER="/etc/systemd/system/lox-audioserver-cover.timer"
+
+PLUGIN_MASS="music-assistant"
+
+echo "### [uninstall] Entferne systemd Units ..."
+
+rm -f "$SERVICE" "$TIMER"
+systemctl daemon-reload || true
+
+
+echo "### [uninstall] Entferne Docker-Images ..."
+
+docker rmi -f "lox-audioserver:beta-local" 2>/dev/null || true
+
+
+echo "### [uninstall] Entferne Music Assistant Daten ..."
+
+rm -rf "$APPDIR/mass-config" "$APPDIR/mass-media"
+
+
+echo "### [uninstall] Entferne Repo, Logs und Daten ..."
+
+rm -rf "$APPDIR/repo"
+rm -rf "$APPDIR/logs"
+rm -rf "$APPDIR/data"
+
+
+echo "### [uninstall] Entferne Cover-Verzeichnis ..."
+
+rm -rf "$WEBDIR/covers"
+
+
+echo "### [uninstall] Entferne CGI-Skripte ..."
+
+rm -f "$AUTHDIR/index.cgi"
+rm -f "$AUTHDIR/proxy.cgi"
+rm -f "$WEBDIR/player.cgi"
+rm -f "$WEBDIR/status.cgi"
+
+
+echo "### [uninstall] Entferne Webfrontend-Verzeichnis ..."
+
+rm -rf "$WEBDIR"
+
+
+echo "### [uninstall] Entferne Plugin-Bin-Verzeichnis ..."
+
+rm -rf "$APPDIR"
+
+exit 0
