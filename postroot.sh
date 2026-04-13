@@ -48,19 +48,21 @@ cat << 'EOF' > $MQTTUPDATESCRIPT
 
 use strict;
 use warnings;
+use LoxBerry::IO;
 use File::Path qw(make_path);
 
 my ($topic, $value) = @ARGV;
-
 exit 0 unless defined $topic;
 
-# Cache-Datei pro Topic
+# Cache-Verzeichnis
 my $cache_dir = "/dev/shm/mqtt_delta_cache";
-make_path($cache_dir) unless -d $cache_dir;
+make_path($cache_dir, { mode => 0777 }) unless -d $cache_dir;
 
+# Dateiname aus Topic erzeugen
 (my $safe = $topic) =~ s/[^A-Za-z0-9_\-]/_/g;
 my $cache_file = "$cache_dir/$safe";
 
+# Alten Wert lesen
 my $old = "";
 if (-f $cache_file) {
     open my $fh, "<", $cache_file;
@@ -71,15 +73,20 @@ if (-f $cache_file) {
 # Nur senden, wenn sich der Wert geändert hat
 if (!defined $old || $old ne $value) {
 
-    system("mosquitto_pub -t '$topic' -m '$value'");
+    # LoxBerry-internes MQTT (mit Auth, Port, allem)
+    LoxBerry::IO::mqtt_publish(
+        $topic,
+        $value,
+        retain => 0
+    );
 
+    # Cache aktualisieren
     open my $fh, ">", $cache_file;
     print $fh $value;
     close $fh;
 }
 
 exit 0;
-
 
 EOF
 
