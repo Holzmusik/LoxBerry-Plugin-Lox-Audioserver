@@ -134,41 +134,37 @@ update_zone() {
     JSON=$(curl -s "http://$AS_IP:$AS_PORT/audio/$Z/status")
     [ -z "$JSON" ] && return
 
+    # --- Cover extrahieren ---
     COVERURL=$(echo "$JSON" | jq -r '.status_result[0].coverurl // empty')
-    [ -z "$COVERURL" ] && return
 
-    TMP_JPG="/dev/shm/cover_${Z}.jpg"
-    TMP_PNG="/dev/shm/cover_${Z}.png"
-    FINAL_PNG="$COVERDIR/zone${Z}.png"
+    if [ -n "$COVERURL" ]; then
+        TMP_JPG="/dev/shm/cover_${Z}.jpg"
+        TMP_PNG="/dev/shm/cover_${Z}.png"
+        FINAL_PNG="$COVERDIR/zone${Z}.png"
 
-    curl -s -o "$TMP_JPG" "$COVERURL" || return
-    [ ! -s "$TMP_JPG" ] && return
+        curl -s -o "$TMP_JPG" "$COVERURL" || true
 
-    if ! file "$TMP_JPG" | grep -qE 'image|bitmap'; then
+        if [ -s "$TMP_JPG" ] && file "$TMP_JPG" | grep -qE 'image|bitmap'; then
+            convert "$TMP_JPG" -resize 480x480 "$TMP_PNG"
+
+            if [ -f "$FINAL_PNG" ]; then
+                NEW_HASH=$(sha256sum "$TMP_PNG" | awk '{print $1}')
+                OLD_HASH=$(sha256sum "$FINAL_PNG" | awk '{print $1}')
+            else
+                NEW_HASH="x"
+                OLD_HASH="y"
+            fi
+
+            if [ "$NEW_HASH" != "$OLD_HASH" ]; then
+                mv "$TMP_PNG" "$FINAL_PNG"
+                chmod 644 "$FINAL_PNG"
+            else
+                rm -f "$TMP_PNG"
+            fi
+        fi
+
         rm -f "$TMP_JPG"
-        return
     fi
-
-    # JPG -> PNG konvertieren (immer in TMP)
-    convert "$TMP_JPG" -resize 480x480 "$TMP_PNG"
-
-    # PNG-Delta: nur schreiben, wenn sich das PNG wirklich geändert hat
-    if [ -f "$FINAL_PNG" ]; then
-        NEW_HASH=$(sha256sum "$TMP_PNG" | awk '{print $1}')
-        OLD_HASH=$(sha256sum "$FINAL_PNG" | awk '{print $1}')
-    else
-        NEW_HASH="x"
-        OLD_HASH="y"
-    fi
-
-    if [ "$NEW_HASH" != "$OLD_HASH" ]; then
-        mv "$TMP_PNG" "$FINAL_PNG"
-        chmod 644 "$FINAL_PNG"
-    else
-        rm -f "$TMP_PNG"
-    fi
-
-    rm -f "$TMP_JPG"
 
     # --- MQTT-Delta über Perl ---
     MQTT_BASE="lox/audioserver/$Z"
@@ -177,40 +173,68 @@ update_zone() {
         local key="$1"
         local value="$2"
         local topic="$MQTT_BASE/$key"
-
         /opt/loxberry/bin/plugins/lox-audioserver/mqtt_delta.pl "$topic" "$value"
     }
 
+    # --- ALLE API-Felder extrahieren ---
+    PLAYERID=$(echo "$JSON" | jq -r '.status_result[0].playerid // empty')
+    NAME=$(echo "$JSON" | jq -r '.status_result[0].name // empty')
     TITLE=$(echo "$JSON" | jq -r '.status_result[0].title // empty')
     ARTIST=$(echo "$JSON" | jq -r '.status_result[0].artist // empty')
     ALBUM=$(echo "$JSON" | jq -r '.status_result[0].album // empty')
-    STATION=$(echo "$JSON" | jq -r '.status_result[0].station // empty')
-    MODE=$(echo "$JSON" | jq -r '.status_result[0].mode // empty')
-    VOLUME=$(echo "$JSON" | jq -r '.status_result[0].volume // empty')
-    TIMEPOS=$(echo "$JSON" | jq -r '.status_result[0].time // empty')
+    COVERURL=$(echo "$JSON" | jq -r '.status_result[0].coverurl // empty')
+    AUDIOPATH=$(echo "$JSON" | jq -r '.status_result[0].audiopath // empty')
     DURATION=$(echo "$JSON" | jq -r '.status_result[0].duration // empty')
+    TIMEPOS=$(echo "$JSON" | jq -r '.status_result[0].time // empty')
+    QINDEX=$(echo "$JSON" | jq -r '.status_result[0].qindex // empty')
+    QUEUEAUTH=$(echo "$JSON" | jq -r '.status_result[0].queueAuthority // empty')
+    PLSHUFFLE=$(echo "$JSON" | jq -r '.status_result[0].plshuffle // empty')
+    PLREPEAT=$(echo "$JSON" | jq -r '.status_result[0].plrepeat // empty')
+    VOLUME=$(echo "$JSON" | jq -r '.status_result[0].volume // empty')
+    MODE=$(echo "$JSON" | jq -r '.status_result[0].mode // empty')
+    AUDIOTYPE=$(echo "$JSON" | jq -r '.status_result[0].audiotype // empty')
+    SOURCENAME=$(echo "$JSON" | jq -r '.status_result[0].sourceName // empty')
+    STATION=$(echo "$JSON" | jq -r '.status_result[0].station // empty')
+    TYPE=$(echo "$JSON" | jq -r '.status_result[0].type // empty')
     CLIENTSTATE=$(echo "$JSON" | jq -r '.status_result[0].clientState // empty')
     POWER=$(echo "$JSON" | jq -r '.status_result[0].power // empty')
-    AUDIOPATH=$(echo "$JSON" | jq -r '.status_result[0].audiopath // empty')
-    SOURCENAME=$(echo "$JSON" | jq -r '.status_result[0].sourceName // empty')
+    POWERSTATE=$(echo "$JSON" | jq -r '.status_result[0].powerState // empty')
+    QID=$(echo "$JSON" | jq -r '.status_result[0].qid // empty')
 
+    # --- MQTT-Regel: play/pause → ALLES senden, stop → NICHT senden ---
+    if [ "$MODE" = "stop" ]; then
+        return
+    fi
+
+    publish_if_changed "playerid" "$PLAYERID"
+    publish_if_changed "name" "$NAME"
     publish_if_changed "title" "$TITLE"
     publish_if_changed "artist" "$ARTIST"
     publish_if_changed "album" "$ALBUM"
-    publish_if_changed "station" "$STATION"
-    publish_if_changed "mode" "$MODE"
-    publish_if_changed "volume" "$VOLUME"
-    publish_if_changed "time" "$TIMEPOS"
+    publish_if_changed "coverurl" "$COVERURL"
+    publish_if_changed "audiopath" "$AUDIOPATH"
     publish_if_changed "duration" "$DURATION"
+    publish_if_changed "time" "$TIMEPOS"
+    publish_if_changed "qindex" "$QINDEX"
+    publish_if_changed "queueAuthority" "$QUEUEAUTH"
+    publish_if_changed "plshuffle" "$PLSHUFFLE"
+    publish_if_changed "plrepeat" "$PLREPEAT"
+    publish_if_changed "volume" "$VOLUME"
+    publish_if_changed "mode" "$MODE"
+    publish_if_changed "audiotype" "$AUDIOTYPE"
+    publish_if_changed "sourceName" "$SOURCENAME"
+    publish_if_changed "station" "$STATION"
+    publish_if_changed "type" "$TYPE"
     publish_if_changed "clientState" "$CLIENTSTATE"
     publish_if_changed "power" "$POWER"
-    publish_if_changed "audiopath" "$AUDIOPATH"
-    publish_if_changed "sourceName" "$SOURCENAME"
+    publish_if_changed "powerState" "$POWERSTATE"
+    publish_if_changed "qid" "$QID"
 }
 
 for Z in $ZONES; do
     update_zone "$Z"
 done
+
 
 
 EOF
