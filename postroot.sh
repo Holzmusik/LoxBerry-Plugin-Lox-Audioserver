@@ -47,15 +47,15 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
-# Finales Cover-Update für Lox-Audioserver (CM5-kompatibel)
-# Holt Cover direkt aus status.cgi, macht Delta-Update und speichert PNG atomar.
+# Ultra-schnelles Cover-Update über die offizielle AudioServer API
+# Keine status.cgi, kein Perl, kein Apache, minimale CPU-Last
 
 set -euo pipefail
 
 PLUGIN="lox-audioserver"
-STATUS_URL="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
+AS_IP="192.168.179.14"
+AS_PORT="7091"
 
-# Fester Pfad – CM5 hat keine Shell-Plugin-Variablen
 COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
 mkdir -p "$COVERDIR"
 
@@ -69,11 +69,11 @@ update_zone() {
     Z=$1
 
     # JSON holen
-    JSON=$(curl -s "$STATUS_URL$Z" || true)
+    JSON=$(curl -s "http://$AS_IP:$AS_PORT/audio/$Z/status")
     [ -z "$JSON" ] && return
 
     # Cover-URL extrahieren
-    COVERURL=$(echo "$JSON" | jq -r '.cover // empty')
+    COVERURL=$(echo "$JSON" | jq -r '.status_result[0].coverurl // empty')
     [ -z "$COVERURL" ] && return
 
     # Temp-Dateien im RAM
@@ -117,10 +117,11 @@ update_zone() {
     rm -f "$TMP_JPG"
 }
 
-# Alle Zonen parallel aktualisieren
+# Alle Zonen nacheinander (keine Parallelität → keine CPU-Spitzen)
 for Z in $(seq 1 $MAX_ZONES); do
-    update_zone "$Z" 
+    update_zone "$Z"
 done
+
 
 EOF
 
