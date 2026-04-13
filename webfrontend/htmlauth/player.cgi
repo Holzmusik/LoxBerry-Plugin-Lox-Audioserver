@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+
 use strict;
 use warnings;
 use CGI;
@@ -6,10 +7,6 @@ use LoxBerry::System;
 use LWP::UserAgent;
 use HTML::Template;
 use JSON;
-use File::Path qw(make_path);
-use CGI::Carp qw(fatalsToBrowser warningsToBrowser);
-use Image::Magick;
-
 
 # CGI initialisieren
 my $cgi     = CGI->new;
@@ -20,105 +17,54 @@ my $lbpplugindir = $LoxBerry::System::lbpplugindir;
 my $lbphtmldir   = $LoxBerry::System::lbphtmldir;
 
 # Defaultwerte
-my ($title, $artist, $album, $name, $station, $elapsed, $duration, $startedAt, $updatedAt, $cover, $volume) =
-   ("", "", "", "", "", 0, 0, 0, 0, "", 0);
+my ($title, $artist, $album, $name, $station, $elapsed, $duration, $cover, $volume) =
+   ("", "", "", "", "", 0, 0, "", 0);
 
-# HTTP-Client
-my $ua = LWP::UserAgent->new(timeout => 5);
-$ua->agent("lox-audioserver-player-cgi/1.0");
+# AudioServer API (High Performance)
+my $AS_HOST = "127.0.0.1";
+my $AS_PORT = "7091";
+my $url = "http://$AS_HOST:$AS_PORT/audio/$zone_id/status";
 
-# Status.cgi des Plugins abfragen
-my $url = "http://127.0.0.1/admin/plugins/$lbpplugindir/status.cgi?zone=$zone_id";
+my $ua = LWP::UserAgent->new(timeout => 3);
 my $res = $ua->get($url);
 
-if (!$res->is_success) {
-    $title  = "Keine Daten verfügbar";
-    $artist = $res->status_line;
-    $cover  = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-} else {
-    my $data = eval { decode_json($res->decoded_content) };
+if ($res->is_success) {
 
-    if ($@ || ref $data ne 'HASH') {
+    my $json = eval { decode_json($res->decoded_content) };
+
+    if (!$@ && ref $json eq 'HASH') {
+
+        my $s = $json->{status_result}[0];
+
+        # Felder übernehmen
+        $title    = $s->{title}    // "";
+        $artist   = $s->{artist}   // "";
+        $album    = $s->{album}    // "";
+        $name     = $s->{name}     // "";
+        $station  = $s->{station}  // "";
+        $elapsed  = $s->{time}     // 0;
+        $duration = $s->{duration} // 0;
+        $volume   = $s->{volume}   // 0;
+
+        # Cover kommt jetzt aus update_covers.sh
+        my $coverfile = "/plugins/$lbpplugindir/covers/zone$zone_id.png";
+
+        if (-f "/opt/loxberry/webfrontend/html/plugins/$lbpplugindir/covers/zone$zone_id.png") {
+            $cover = $coverfile;
+        } else {
+            $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+        }
+
+    } else {
         $title  = "Fehler beim JSON-Parsing";
         $artist = $@;
         $cover  = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-    } else {
-
-        # Felder übernehmen
-        $title     = $data->{title}   // "";
-        $artist    = $data->{artist}  // "";
-        $album     = $data->{album}   // "";
-        $name      = $data->{name}    // "";
-        $station   = $data->{station} // "";
-        $elapsed   = $data->{elapsed} // 0;
-        $duration  = $data->{duration} // 0;
-        $startedAt = $data->{startedAt} // 0;
-        $updatedAt = $data->{updatedAt} // 0;
-        $volume    = $data->{volume}  // 0;
-
-        # Cover-URL
-        my $coverurl = $data->{cover} // "";
-
-        # Lokales Cover speichern
-        my $coverdir  = "/opt/loxberry/webfrontend/html/plugins/$lbpplugindir/covers";
-        my $coverfile = "$coverdir/zone$zone_id.png";
-        my $local_cover = "/plugins/$lbpplugindir/covers/zone$zone_id.png";
-
-       if ($coverurl) {
-           make_path($coverdir) unless -d $coverdir;
-
-           my $imgres = $ua->get($coverurl);
-
-           if ($imgres->is_success && ($imgres->header('Content-Type') // '') =~ /^image/) {
-
-               my $blob = $imgres->content;
-
-               # Image::Magick Objekt
-               my $img = Image::Magick->new;
-
-               # Bild aus dem Blob laden
-               my $err = $img->BlobToImage($blob);
-               if ($err) {
-                   warn "Fehler beim Laden des Coverbildes: $err";
-                   $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-               } else {
-
-                   # Immer als PNG speichern
-               # Immer als PNG speichern
-               $img->Set(magick => 'PNG');   # <-- Format explizit setzen
-
-               my $err2 = $img->Write(
-                  filename    => $coverfile,
-                  compression => 'Zip'
-               );
-
-               if ($err2) {
-                    warn "Fehler beim Speichern des PNG-Covers: $err2";
-                    $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-               } else {
-                   chmod 0644, $coverfile;
-                   $cover = $local_cover;
-               }
-
-
-                   if ($err2) {
-                       warn "Fehler beim Speichern des PNG-Covers: $err2";
-                       $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-                   } else {
-                       chmod 0644, $coverfile;
-                       $cover = $local_cover;
-                   }
-              }
-    
-           } else {
-               $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-           }
-
-       } else {
-           $cover = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
-       }
-
     }
+
+} else {
+    $title  = "Keine Daten verfügbar";
+    $artist = $res->status_line;
+    $cover  = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
 }
 
 # Template laden
