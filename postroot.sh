@@ -147,7 +147,7 @@ update_zone() {
         curl -s -o "$TMP_JPG" "$COVERURL" || true
 
         if [ -s "$TMP_JPG" ] && file "$TMP_JPG" | grep -qE 'image|bitmap'; then
-            convert "$TMP_JPG" -resize 480x480 "$TMP_PNG"
+            convert "$TMP_JPG" -resize 640x640 "$TMP_PNG"
 
             if [ -f "$FINAL_PNG" ]; then
                 NEW_HASH=$(sha256sum "$TMP_PNG" | awk '{print $1}')
