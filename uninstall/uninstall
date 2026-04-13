@@ -59,4 +59,14 @@ echo "### [uninstall] Entferne Plugin-Bin-Verzeichnis ..."
 
 rm -rf "$APPDIR"
 
+echo "### [postroot] Finaler Cleanup ..."
+
+rm -rf "$LBHOMEDIR/webfrontend/html/plugins/$PLUGIN" 2>/dev/null || true
+rm -rf "$LBHOMEDIR/webfrontend/htmlauth/$PLUGIN" 2>/dev/null || true
+rm -rf "$LBHOMEDIR/bin/plugins/$PLUGIN" 2>/dev/null || true
+
+echo "### [postroot] Deinstallation vollständig abgeschlossen."
+
+
+
 exit 0
