@@ -41,89 +41,68 @@ else
     echo "WARNUNG: Konnte ImageMagick nicht installieren – Paketmanager unbekannt."
 fi
 
-echo "Erstelle kombiniertes Cover+MQTT-Update-Script ..."
+echo "Erstelle schnelles Cover-Update-Script ..."
 
 UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
-# Optimiertes Cover- und MQTT-Update für Lox-Audioserver
-# Sascha Edition – schnell, sauber, robust
+# Ultra-schnelles Cover-Update für Lox-Audioserver
+# Holt Cover direkt aus status.cgi → konvertiert → speichert als PNG
 
 set -euo pipefail
 
+LOCKFILE="/var/lock/lox-audioserver-cover.lock"
+exec 200>$LOCKFILE
+flock -n 200 || exit 0
+
 PLUGIN="lox-audioserver"
-BASE_URL="http://127.0.0.1/admin/plugins/$PLUGIN"
-STATUS_URL="$BASE_URL/status.cgi?zone="
-PLAYER_URL="$BASE_URL/player.cgi?zone="
+STATUS_URL="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
+
+# LoxBerry-Variablen (werden automatisch gesetzt)
+COVERDIR="$lbphtmldir/covers"
+mkdir -p "$COVERDIR"
 
 MAX_ZONES=10
-PARALLEL_JOBS=10
-
-# --- 1. Echte Zonen erkennen -------------------------------------------------
-
-REAL_ZONES=$(seq 1 $MAX_ZONES | xargs -n1 -P$PARALLEL_JOBS -I{} sh -c '
-    JSON=$(curl -s "'"$STATUS_URL"'"{} )
-    NAME=$(echo "$JSON" | jq -r ".name // empty")
-    if [ -n "$NAME" ]; then echo {}; fi
-')
-
-# Keine Zonen → nichts tun
-[ -z "$REAL_ZONES" ] && exit 0
-
-
-# --- 2. MQTT + Cover-Update parallel -----------------------------------------
 
 update_zone() {
     Z=$1
 
-    # MQTT triggern (status.cgi erzeugt MQTT)
-    curl -s "$STATUS_URL$Z" >/dev/null
+    # JSON holen
+    JSON=$(curl -s "$STATUS_URL$Z")
+    COVERURL=$(echo "$JSON" | jq -r '.cover // empty')
 
-    # Cover aktualisieren (player.cgi erzeugt PNG)
-    # --- PNG-Delta-Update -------------------------------------------------------
+    [ -z "$COVERURL" ] && return
 
-COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
-mkdir -p "$COVERDIR"
+    TMP="/tmp/cover_${Z}_orig"
+    FINAL="$COVERDIR/zone${Z}.png"
 
-TMPFILE="/tmp/cover_zone${Z}_new.png"
-FINALFILE="$COVERDIR/zone${Z}.png"
+    # Originalbild laden
+    curl -s "$COVERURL" -o "$TMP"
 
-# Neues Cover vom Player holen (liefert PNG)
-curl -s "$PLAYER_URL$Z" -o "$TMPFILE"
+    # Prüfen, ob es ein Bild ist
+    if ! file "$TMP" | grep -qE 'image|bitmap'; then
+        rm -f "$TMP"
+        return
+    fi
 
-# Wenn kein altes Cover existiert → direkt übernehmen
-if [ ! -f "$FINALFILE" ]; then
-    mv "$TMPFILE" "$FINALFILE"
-    chmod 644 "$FINALFILE"
-    exit 0
-fi
+    # Nach PNG konvertieren (egal ob JPG, WebP, GIF, PNG)
+    convert "$TMP" PNG:"$FINAL"
 
-# Hashes vergleichen
-OLDHASH=$(sha256sum "$FINALFILE" | awk '{print $1}')
-NEWHASH=$(sha256sum "$TMPFILE" | awk '{print $1}')
-
-# Wenn gleich → nichts tun
-if [ "$OLDHASH" = "$NEWHASH" ]; then
-    rm "$TMPFILE"
-else
-    mv "$TMPFILE" "$FINALFILE"
-    chmod 644 "$FINALFILE"
-fi
-
+    chmod 644 "$FINAL"
+    touch "$FINAL"
+    rm -f "$TMP"
 }
 
-export -f update_zone
-export STATUS_URL PLAYER_URL
-
-echo "$REAL_ZONES" | xargs -n1 -P$PARALLEL_JOBS bash -c 'update_zone "$@"' _
-
-
-
+for Z in $(seq 1 $MAX_ZONES); do
+    update_zone "$Z" &
+done
+wait
 EOF
 
 chmod +x $UPDATESCRIPT
 chown loxberry:loxberry $UPDATESCRIPT
+
 
 
 
