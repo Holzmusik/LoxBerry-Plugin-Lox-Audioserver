@@ -5,6 +5,7 @@ use warnings;
 use CGI;
 use JSON;
 use LWP::UserAgent;
+use LoxBerry::System;
 
 my $cgi     = CGI->new;
 my $zone_id = $cgi->param('zone') // '';
@@ -36,6 +37,17 @@ if (!$res->is_success) {
 my $json = decode_json($res->decoded_content);
 my $s = $json->{status_result}[0];
 
+# Lokales Cover (von update_covers.sh erzeugt)
+my $lbpplugindir = $LoxBerry::System::lbpplugindir;
+my $cover_local = "/plugins/$lbpplugindir/covers/zone$zone_id.png";
+
+# Physischer Pfad prüfen
+my $physical = "/opt/loxberry/webfrontend/html$cover_local";
+
+if (! -f $physical) {
+    $cover_local = "/plugins/$lbpplugindir/templates/images/No-album-art.png";
+}
+
 # JSON-Ausgabe für Web-UI
 print encode_json({
     title        => $s->{title}        // '',
@@ -43,6 +55,7 @@ print encode_json({
     album        => $s->{album}        // '',
     name         => $s->{name}         // '',
     station      => $s->{station}      // '',
+    cover        => $cover_local,      # <-- WICHTIG: Web-UI braucht das!
     coverurl     => $s->{coverurl}     // '',
     audiopath    => $s->{audiopath}    // '',
     duration     => $s->{duration}     // 0,
