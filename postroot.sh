@@ -335,8 +335,7 @@ docker run -d \
   --cap-add SYS_ADMIN \
   --cap-add DAC_READ_SEARCH \
   --security-opt apparmor=unconfined \
-  -v /etc/localtime:/etc/localtime:ro
-  -v /etc/timezone:/etc/timezone:ro
+  -e TZ=Europe/Berlin \
   -v "$APPDIR/data:/app/data" \
   -v "$APPDIR/logs:/app/logs" \
   "$LOCALIMG"
