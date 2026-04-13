@@ -47,7 +47,7 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
-# Ultra-schnelles Cover-Update über die offizielle AudioServer API
+# Ultra-schnelles Cover- und MQTT-Update über die offizielle AudioServer API
 # Keine status.cgi, kein Perl, kein Apache, minimale CPU-Last
 
 set -euo pipefail
@@ -63,7 +63,14 @@ LOCKFILE="/var/lock/lox-audioserver-cover.lock"
 exec 200>$LOCKFILE
 flock -n 200 || exit 0
 
-MAX_ZONES=10
+# --- Auto-Zonenerkennung ---
+# /audio/status liefert alle Player
+ZONES=$(curl -s "http://$AS_IP:$AS_PORT/audio/status" | jq -r '.status_result[].playerid' 2>/dev/null || echo "")
+
+# Fallback: Wenn API nicht antwortet → 1..10
+if [ -z "$ZONES" ]; then
+    ZONES=$(seq 1 10)
+fi
 
 update_zone() {
     Z=$1
@@ -102,25 +109,63 @@ update_zone() {
     fi
 
     # Delta-Update: Nur neu rendern, wenn sich das Cover geändert hat
-    if [ "$NEW_HASH" = "$OLD_HASH" ]; then
-        rm -f "$TMP_JPG"
-        return
+    if [ "$NEW_HASH" != "$OLD_HASH" ]; then
+        convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
+        mv "$TMP_PNG" "$FINAL_PNG"
+        chmod 644 "$FINAL_PNG"
     fi
 
-    # PNG neu rendern
-    convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
-
-    # Atomar ersetzen
-    mv "$TMP_PNG" "$FINAL_PNG"
-    chmod 644 "$FINAL_PNG"
-
     rm -f "$TMP_JPG"
+
+    # --- MQTT-Update (Delta) ---
+    MQTT_BASE="lox/audioserver/$Z"
+
+    publish_if_changed() {
+        local key="$1"
+        local value="$2"
+        local topic="$MQTT_BASE/$key"
+
+        OLD=$(mosquitto_sub -h localhost -t "$topic" -C 1 -W 1 2>/dev/null || echo "")
+
+        if [ "$OLD" != "$value" ]; then
+            mosquitto_pub -h localhost -t "$topic" -m "$value"
+        fi
+    }
+
+    # Werte extrahieren
+    TITLE=$(echo "$JSON" | jq -r '.status_result[0].title // empty')
+    ARTIST=$(echo "$JSON" | jq -r '.status_result[0].artist // empty')
+    ALBUM=$(echo "$JSON" | jq -r '.status_result[0].album // empty')
+    STATION=$(echo "$JSON" | jq -r '.status_result[0].station // empty')
+    MODE=$(echo "$JSON" | jq -r '.status_result[0].mode // empty')
+    VOLUME=$(echo "$JSON" | jq -r '.status_result[0].volume // empty')
+    TIMEPOS=$(echo "$JSON" | jq -r '.status_result[0].time // empty')
+    DURATION=$(echo "$JSON" | jq -r '.status_result[0].duration // empty')
+    CLIENTSTATE=$(echo "$JSON" | jq -r '.status_result[0].clientState // empty')
+    POWER=$(echo "$JSON" | jq -r '.status_result[0].power // empty')
+    AUDIOPATH=$(echo "$JSON" | jq -r '.status_result[0].audiopath // empty')
+    SOURCENAME=$(echo "$JSON" | jq -r '.status_result[0].sourceName // empty')
+
+    # MQTT senden (nur bei Änderung)
+    publish_if_changed "title" "$TITLE"
+    publish_if_changed "artist" "$ARTIST"
+    publish_if_changed "album" "$ALBUM"
+    publish_if_changed "station" "$STATION"
+    publish_if_changed "mode" "$MODE"
+    publish_if_changed "volume" "$VOLUME"
+    publish_if_changed "time" "$TIMEPOS"
+    publish_if_changed "duration" "$DURATION"
+    publish_if_changed "clientState" "$CLIENTSTATE"
+    publish_if_changed "power" "$POWER"
+    publish_if_changed "audiopath" "$AUDIOPATH"
+    publish_if_changed "sourceName" "$SOURCENAME"
 }
 
-# Alle Zonen nacheinander (keine Parallelität → keine CPU-Spitzen)
-for Z in $(seq 1 $MAX_ZONES); do
+# --- Alle Zonen nacheinander abarbeiten ---
+for Z in $ZONES; do
     update_zone "$Z"
 done
+
 
 
 EOF
