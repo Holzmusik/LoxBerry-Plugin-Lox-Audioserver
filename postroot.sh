@@ -53,7 +53,7 @@ cat << 'EOF' > $UPDATESCRIPT
 set -euo pipefail
 
 PLUGIN="lox-audioserver"
-AS_IP="192.168.179.14"
+AS_IP="localhost"
 AS_PORT="7091"
 
 COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
