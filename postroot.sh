@@ -46,7 +46,6 @@ echo "Erstelle schnelles Cover-Update-Script ..."
 UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
-
 #!/bin/bash
 # Finales Cover-Update für Lox-Audioserver (CM5-kompatibel)
 # Holt Cover direkt aus status.cgi, konvertiert nach PNG und speichert zuverlässig.
