@@ -46,25 +46,23 @@ echo "Erstelle schnelles Cover-Update-Script ..."
 UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 
 cat << 'EOF' > $UPDATESCRIPT
+
 #!/bin/bash
-# Ultra-schnelles Cover-Update für Lox-Audioserver
-# Holt Cover direkt aus status.cgi → konvertiert → speichert als PNG
+# Finales Cover-Update für Lox-Audioserver (CM5-kompatibel)
+# Holt Cover direkt aus status.cgi, konvertiert nach PNG und speichert zuverlässig.
 
 set -euo pipefail
-
-# LoxBerry-Umgebung laden (sehr wichtig!)
-source /opt/loxberry/sbin/loxberryinit.sh
-
-LOCKFILE="/var/lock/lox-audioserver-cover.lock"
-exec 200>$LOCKFILE
-flock -n 200 || exit 0
 
 PLUGIN="lox-audioserver"
 STATUS_URL="http://127.0.0.1/admin/plugins/$PLUGIN/status.cgi?zone="
 
-# LoxBerry-Variablen (werden automatisch gesetzt)
-COVERDIR="$lbphtmldir/covers"
+# Fester Pfad – CM5 hat keine Shell-Plugin-Variablen
+COVERDIR="/opt/loxberry/webfrontend/html/plugins/$PLUGIN/covers"
 mkdir -p "$COVERDIR"
+
+LOCKFILE="/var/lock/lox-audioserver-cover.lock"
+exec 200>$LOCKFILE
+flock -n 200 || exit 0
 
 MAX_ZONES=10
 
@@ -72,16 +70,18 @@ update_zone() {
     Z=$1
 
     # JSON holen
-    JSON=$(curl -s "$STATUS_URL$Z")
-    COVERURL=$(echo "$JSON" | jq -r '.cover // empty')
+    JSON=$(curl -s "$STATUS_URL$Z" || true)
+    [ -z "$JSON" ] && return
 
+    # Cover-URL extrahieren
+    COVERURL=$(echo "$JSON" | jq -r '.cover // empty')
     [ -z "$COVERURL" ] && return
 
     TMP="/tmp/cover_${Z}_orig"
     FINAL="$COVERDIR/zone${Z}.png"
 
     # Originalbild laden
-    curl -s "$COVERURL" -o "$TMP"
+    curl -s "$COVERURL" -o "$TMP" || return
 
     # Prüfen, ob es ein Bild ist
     if ! file "$TMP" | grep -qE 'image|bitmap'; then
@@ -89,7 +89,7 @@ update_zone() {
         return
     fi
 
-    # Nach PNG konvertieren (egal ob JPG, WebP, GIF, PNG)
+    # PNG konvertieren (egal welches Quellformat)
     convert "$TMP" PNG:"$FINAL"
 
     chmod 644 "$FINAL"
@@ -97,10 +97,13 @@ update_zone() {
     rm -f "$TMP"
 }
 
+# Alle Zonen parallel aktualisieren
 for Z in $(seq 1 $MAX_ZONES); do
     update_zone "$Z" &
 done
 wait
+
+
 EOF
 
 chmod +x $UPDATESCRIPT
