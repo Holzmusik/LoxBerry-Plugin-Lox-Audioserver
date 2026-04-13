@@ -45,47 +45,42 @@ echo "Erstelle schnelles MQTT-Update-Script ..."
 MQTTUPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/mqtt_delta.pl"
 cat << 'EOF' > $MQTTUPDATESCRIPT
 #!/usr/bin/perl
-$ENV{'LBHOMEDIR'} = '/opt/loxberry';
-$ENV{'PERL5LIB'} = '/opt/loxberry/libs/perllib';
 
 use strict;
 use warnings;
-use LoxBerry::IO;
 use File::Path qw(make_path);
 
 my ($topic, $value) = @ARGV;
-exit 0 if !$topic;
 
-# Cache-Verzeichnis
-my $cache_dir = "/opt/loxberry/data/lox-audioserver/mqttcache";
-make_path($cache_dir);
+exit 0 unless defined $topic;
 
-# Topic-Dateiname sicher machen
-(my $safe_topic = $topic) =~ s/[^\w\-]/_/g;
-my $cache_file = "$cache_dir/$safe_topic.txt";
+# Cache-Datei pro Topic
+my $cache_dir = "/dev/shm/mqtt_delta_cache";
+make_path($cache_dir) unless -d $cache_dir;
 
-# Alten Wert laden
+(my $safe = $topic) =~ s/[^A-Za-z0-9_\-]/_/g;
+my $cache_file = "$cache_dir/$safe";
+
 my $old = "";
-if (-e $cache_file) {
+if (-f $cache_file) {
     open my $fh, "<", $cache_file;
-    $old = <$fh>;
+    chomp($old = <$fh> // "");
     close $fh;
-    chomp $old;
 }
 
-# Delta: Nur senden, wenn sich der Wert geändert hat
-if ($old ne $value) {
-    my $mqtt = LoxBerry::IO::mqtt_connect();
-    $mqtt->publish($topic, $value);
-    $mqtt->disconnect();
+# Nur senden, wenn sich der Wert geändert hat
+if (!defined $old || $old ne $value) {
 
-    # neuen Wert speichern
+    system("mosquitto_pub -t '$topic' -m '$value'");
+
     open my $fh, ">", $cache_file;
     print $fh $value;
     close $fh;
 }
 
 exit 0;
+
+
 EOF
 
 chmod +x $MQTTUPDATESCRIPT
