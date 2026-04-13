@@ -40,6 +40,55 @@ elif command -v yum >/dev/null 2>&1; then
 else
     echo "WARNUNG: Konnte ImageMagick nicht installieren – Paketmanager unbekannt."
 fi
+echo "Erstelle schnelles MQTT-Update-Script ..."
+
+MQTTUPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/mqtt_delta.pl"
+cat << 'EOF' > $MQTTUPDATESCRIPT
+#!/usr/bin/perl
+use strict;
+use warnings;
+use LoxBerry::IO;
+use File::Path qw(make_path);
+
+my ($topic, $value) = @ARGV;
+exit 0 if !$topic;
+
+# Cache-Verzeichnis
+my $cache_dir = "/opt/loxberry/data/lox-audioserver/mqttcache";
+make_path($cache_dir);
+
+# Topic-Dateiname sicher machen
+(my $safe_topic = $topic) =~ s/[^\w\-]/_/g;
+my $cache_file = "$cache_dir/$safe_topic.txt";
+
+# Alten Wert laden
+my $old = "";
+if (-e $cache_file) {
+    open my $fh, "<", $cache_file;
+    $old = <$fh>;
+    close $fh;
+    chomp $old;
+}
+
+# Delta: Nur senden, wenn sich der Wert geändert hat
+if ($old ne $value) {
+    my $mqtt = LoxBerry::IO::mqtt_connect();
+    $mqtt->publish($topic, $value);
+    $mqtt->disconnect();
+
+    # neuen Wert speichern
+    open my $fh, ">", $cache_file;
+    print $fh $value;
+    close $fh;
+}
+
+exit 0;
+EOF
+
+chmod +x $MQTTUPDATESCRIPT
+chown loxberry:loxberry $MQTTUPDATESCRIPT
+
+
 
 echo "Erstelle schnelles Cover-Update-Script ..."
 
@@ -48,7 +97,7 @@ UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
 cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
 # Ultra-schnelles Cover- und MQTT-Update über die offizielle AudioServer API
-# Keine status.cgi, kein Perl, kein Apache, minimale CPU-Last
+# Keine status.cgi, kein Perl-CGI, minimale CPU-Last
 
 set -euo pipefail
 
@@ -64,10 +113,8 @@ exec 200>$LOCKFILE
 flock -n 200 || exit 0
 
 # --- Auto-Zonenerkennung ---
-# /audio/status liefert alle Player
 ZONES=$(curl -s "http://$AS_IP:$AS_PORT/audio/status" | jq -r '.status_result[].playerid' 2>/dev/null || echo "")
 
-# Fallback: Wenn API nicht antwortet → 1..10
 if [ -z "$ZONES" ]; then
     ZONES=$(seq 1 10)
 fi
@@ -75,40 +122,32 @@ fi
 update_zone() {
     Z=$1
 
-    # JSON holen
     JSON=$(curl -s "http://$AS_IP:$AS_PORT/audio/$Z/status")
     [ -z "$JSON" ] && return
 
-    # Cover-URL extrahieren
     COVERURL=$(echo "$JSON" | jq -r '.status_result[0].coverurl // empty')
     [ -z "$COVERURL" ] && return
 
-    # Temp-Dateien im RAM
     TMP_JPG="/dev/shm/cover_${Z}.jpg"
     TMP_PNG="/dev/shm/cover_${Z}.png"
     FINAL_PNG="$COVERDIR/zone${Z}.png"
 
-    # Cover herunterladen
     curl -s -o "$TMP_JPG" "$COVERURL" || return
     [ ! -s "$TMP_JPG" ] && return
 
-    # Prüfen, ob es ein Bild ist
     if ! file "$TMP_JPG" | grep -qE 'image|bitmap'; then
         rm -f "$TMP_JPG"
         return
     fi
 
-    # Hash des neuen Covers
     NEW_HASH=$(sha256sum "$TMP_JPG" | awk '{print $1}')
 
-    # Hash des bestehenden PNG (falls vorhanden)
     if [ -f "$FINAL_PNG" ]; then
         OLD_HASH=$(sha256sum "$FINAL_PNG" | awk '{print $1}')
     else
         OLD_HASH=""
     fi
 
-    # Delta-Update: Nur neu rendern, wenn sich das Cover geändert hat
     if [ "$NEW_HASH" != "$OLD_HASH" ]; then
         convert "$TMP_JPG" -resize 300x300 "$TMP_PNG"
         mv "$TMP_PNG" "$FINAL_PNG"
@@ -117,7 +156,7 @@ update_zone() {
 
     rm -f "$TMP_JPG"
 
-    # --- MQTT-Update (Delta) ---
+    # --- MQTT-Delta über Perl ---
     MQTT_BASE="lox/audioserver/$Z"
 
     publish_if_changed() {
@@ -125,14 +164,9 @@ update_zone() {
         local value="$2"
         local topic="$MQTT_BASE/$key"
 
-        OLD=$(mosquitto_sub -h localhost -t "$topic" -C 1 -W 1 2>/dev/null || echo "")
-
-        if [ "$OLD" != "$value" ]; then
-            mosquitto_pub -h localhost -t "$topic" -m "$value"
-        fi
+        /opt/loxberry/bin/plugins/lox-audioserver/mqtt_delta.pl "$topic" "$value"
     }
 
-    # Werte extrahieren
     TITLE=$(echo "$JSON" | jq -r '.status_result[0].title // empty')
     ARTIST=$(echo "$JSON" | jq -r '.status_result[0].artist // empty')
     ALBUM=$(echo "$JSON" | jq -r '.status_result[0].album // empty')
@@ -146,7 +180,6 @@ update_zone() {
     AUDIOPATH=$(echo "$JSON" | jq -r '.status_result[0].audiopath // empty')
     SOURCENAME=$(echo "$JSON" | jq -r '.status_result[0].sourceName // empty')
 
-    # MQTT senden (nur bei Änderung)
     publish_if_changed "title" "$TITLE"
     publish_if_changed "artist" "$ARTIST"
     publish_if_changed "album" "$ALBUM"
@@ -161,12 +194,9 @@ update_zone() {
     publish_if_changed "sourceName" "$SOURCENAME"
 }
 
-# --- Alle Zonen nacheinander abarbeiten ---
 for Z in $ZONES; do
     update_zone "$Z"
 done
-
-
 
 EOF
 
