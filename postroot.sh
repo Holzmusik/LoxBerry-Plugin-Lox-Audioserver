@@ -53,7 +53,7 @@ cat << 'EOF' > $UPDATESCRIPT
 set -euo pipefail
 
 # LoxBerry-Umgebung laden (sehr wichtig!)
-source /opt/loxberry/system/loxberryinit.sh
+source /opt/loxberry/sbin/loxberryinit.sh
 
 LOCKFILE="/var/lock/lox-audioserver-cover.lock"
 exec 200>$LOCKFILE
