@@ -45,6 +45,9 @@ echo "Erstelle schnelles MQTT-Update-Script ..."
 MQTTUPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/mqtt_delta.pl"
 cat << 'EOF' > $MQTTUPDATESCRIPT
 #!/usr/bin/perl
+$ENV{'LBHOMEDIR'} = '/opt/loxberry';
+$ENV{'PERL5LIB'} = '/opt/loxberry/libs/perllib';
+
 use strict;
 use warnings;
 use LoxBerry::IO;
@@ -98,6 +101,11 @@ cat << 'EOF' > $UPDATESCRIPT
 #!/bin/bash
 # Ultra-schnelles Cover- und MQTT-Update über die offizielle AudioServer API
 # Keine status.cgi, kein Perl-CGI, minimale CPU-Last
+export LBHOMEDIR=/opt/loxberry
+export PERL5LIB=/opt/loxberry/libs/perllib
+export HOME=/opt/loxberry
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
 
 set -euo pipefail
 
@@ -220,7 +228,12 @@ Description=Lox-Audioserver Cover Update Service
 Type=oneshot
 User=loxberry
 Group=loxberry
-ExecStart=/opt/loxberry/bin/plugins/lox-audioserver/update_covers.sh
+Environment="LBHOMEDIR=/opt/loxberry"
+Environment="HOME=/opt/loxberry"
+Environment="PERL5LIB=/opt/loxberry/libs/perllib"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+WorkingDirectory=/opt/loxberry
+ExecStart=/bin/bash /opt/loxberry/bin/plugins/lox-audioserver/update_covers.sh
 EOF
 
 echo "Erstelle systemd Timer für Cover-Updates ..."
