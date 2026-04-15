@@ -93,8 +93,6 @@ EOF
 chmod +x $MQTTUPDATESCRIPT
 chown loxberry:loxberry $MQTTUPDATESCRIPT
 
-
-
 echo "Erstelle schnelles Cover-Update-Script ..."
 
 UPDATESCRIPT="/opt/loxberry/bin/plugins/$PLUGINNAME/update_covers.sh"
@@ -237,17 +235,10 @@ for Z in $ZONES; do
     update_zone "$Z"
 done
 
-
-
 EOF
-
 
 chmod +x $UPDATESCRIPT
 chown loxberry:loxberry $UPDATESCRIPT
-
-
-
-
 
 echo "Erstelle systemd Service für Cover-Updates ..."
 
@@ -289,7 +280,6 @@ EOF
 systemctl daemon-reload
 systemctl enable lox-audioserver-cover.timer
 systemctl start lox-audioserver-cover.timer
-
 
 # In Plugin-Verzeichnis wechseln
 cd "$APPDIR" || exit 1
@@ -340,7 +330,6 @@ docker run -d \
   -v "$APPDIR/logs:/app/logs" \
   "$LOCALIMG"
 
-
 # CGI-Skripte Rechte setzen (Proxy & Index)
 echo "Setze Rechte für CGI-Skripte ..."
 for script in index.cgi proxy.cgi; do
@@ -350,34 +339,5 @@ for script in index.cgi proxy.cgi; do
     fi
 done
 
-### Music Assistant Integration ###
-PLUGINNAME_MASS=music-assistant
-
-# Alten Container entfernen, falls vorhanden
-if docker ps -a --format '{{.Names}}' | grep -q "^$PLUGINNAME_MASS$"; then
-    echo "Entferne alten Container $PLUGINNAME_MASS ..."
-    docker rm -f $PLUGINNAME_MASS
-fi
-
-# Neueste Version ziehen
-echo "Ziehe aktuelles Music Assistant Docker-Image ..."
-docker pull ghcr.io/music-assistant/server:latest
-
-# Verzeichnisse für Config und Media anlegen
-echo "Erstelle Config- und Media-Verzeichnisse für Music Assistant ..."
-mkdir -p "$APPDIR/mass-config" "$APPDIR/mass-media"
-chown -R loxberry:loxberry "$APPDIR/mass-config" "$APPDIR/mass-media"
-
-# Container starten
-echo "Starte neuen Container $PLUGINNAME_MASS ..."
-docker run -d \
-  --name $PLUGINNAME_MASS \
-  --restart=always \
-  --network host \
-  -v "$APPDIR/mass-config:/config" \
-  -v "$APPDIR/mass-media:/media" \
-  -e TZ=Europe/Berlin \
-  ghcr.io/music-assistant/server:latest
-
-echo "### postroot.sh abgeschlossen – Lox-Audioserver + Music Assistant laufen jetzt in Docker."
+echo "### postroot.sh abgeschlossen – Lox-Audioserver läuft jetzt in Docker."
 exit 0
