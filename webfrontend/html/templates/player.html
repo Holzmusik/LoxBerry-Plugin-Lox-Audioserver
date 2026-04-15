@@ -318,9 +318,9 @@ async function refreshData() {
 
     const coverEl = document.getElementById("cover");
     if (data.cover) {
-      coverEl.src = data.cover + "?ts=" + Date.now();
+      coverEl.src = data.cover;
       document.getElementById("container")
-              .style.setProperty("--bg-cover", `url('${data.cover}?ts=${Date.now()}')`);
+              .style.setProperty("--bg-cover", `url('${data.cover}')`);
     } else {
       coverEl.src = "/plugins/lox-audioserver/templates/images/No-album-art.png";
       document.getElementById("container")
